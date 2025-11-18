@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  nuxt-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: suprahub-dev
+    ports:
+      - "3000:3000"
+      - "24678:24678"
+    volumes:
+      - .:/app
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      - PORT=3000
+      - CHOKIDAR_USEPOLLING=true
+    command: sh -c "bun install --force && bun run dev"
+    stdin_open: true
+    tty: true
