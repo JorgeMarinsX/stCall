@@ -21,7 +21,11 @@ export default defineNuxtConfig({
     },
   },
   
-  css: ['primeicons/primeicons.css'],
+  css: [
+    'primevue/resources/primevue.min.css',
+    'primeicons/primeicons.css',
+    '~/assets/css/tailwind.css'
+  ],
   
   typescript: {
     strict: true,

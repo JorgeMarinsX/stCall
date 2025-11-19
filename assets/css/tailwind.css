@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* small helpers used by layout */
+:root {
+  --primary-600: #2563eb;
+}
