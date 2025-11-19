@@ -1,13 +1,6 @@
 
 <template>
-    <aside class="w-22 h-screen flex flex-col items-center justify-between py-4 px-2 bg-white border-r">
-        <div class="flex flex-col items-center gap-2" role="navigation" aria-label="Main navigation">
-            <Avatar image="/avatar.png" alt="User avatar" class="w-14 h-14" size="large">
-                <template #label>JS</template>
-            </Avatar>
-            <div class="text-sm text-gray-700">João Silva</div>
-        </div>
-
+    <aside class="w-22 h-screen flex flex-col items-center justify-between py-4 px-2 border-r">
         <nav class="flex flex-col gap-3 items-center">
             <NuxtLink
                 v-for="item in navItems"
@@ -40,9 +33,12 @@
 import { ref } from 'vue';
 
 const navItems = ref([
-    { key: 'profile', label: 'Profile', icon: 'pi pi-user', route: '/profile' },
-    { key: 'call', label: 'Call', icon: 'pi pi-phone', route: '/call' },
-    { key: 'history', label: 'History', icon: 'pi pi-history', route: '/history' }
+    { key: 'dashboard', label: 'Dashboard', icon: 'pi pi-chart-bar', route: '/' },
+    { key: 'profile', label: 'Perfil', icon: 'pi pi-user', route: '/profile' },
+    { key: 'call', label: 'Chamadas', icon: 'pi pi-phone', route: '/call' },
+    { key: 'history', label: 'History', icon: 'pi pi-history', route: '/history' },
+    { key: 'settings', label: 'Configurações', icon: 'pi pi-cog', route: '/settings' }
+
 ]);
 </script>
 
