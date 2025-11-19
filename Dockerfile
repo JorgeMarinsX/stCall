@@ -8,5 +8,6 @@ COPY package.json ./
 # Expose ports
 EXPOSE 3000 24678
 
-# Start dev server
-CMD ["bun", "run", "dev"]
+# Start dev server. --bun and --no-fork should be removed in production,
+# both here and in the docker-compose.yml file
+CMD ["bun", "--bun", "run", "dev", "--no-fork"]

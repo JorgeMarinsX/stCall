@@ -3,7 +3,7 @@ import Aura from '@primeuix/themes/aura';
 export default defineNuxtConfig({
   devtools: { enabled: true },
   
-  modules: ['@primevue/nuxt-module'],
+  modules: ['@primevue/nuxt-module', '@nuxt/devtools'],
   
   primevue: {
     options: {
@@ -33,8 +33,8 @@ export default defineNuxtConfig({
       hmr: {
         protocol: 'ws',
         host: '0.0.0.0',
-        port: 24678,
-        clientPort: 24678
+        port: 3000,
+        clientPort: 3000
       },
       watch: {
         usePolling: true

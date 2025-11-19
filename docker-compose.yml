@@ -16,6 +16,6 @@ services:
       - HOST=0.0.0.0
       - PORT=3000
       - CHOKIDAR_USEPOLLING=true
-    command: sh -c "bun install --force && bun run dev"
+    command: sh -c "bun install --force && bun --bun run dev --no-fork"
     stdin_open: true
     tty: true
