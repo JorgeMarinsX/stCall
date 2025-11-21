@@ -33,5 +33,4 @@ const stCallTheme = definePreset(Aura, {
     }
 });
 
-
 export default stCallTheme;

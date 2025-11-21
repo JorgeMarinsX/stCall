@@ -3,9 +3,9 @@
 -->
 
 <template>
-<Toolbar>
+<Toolbar class="sticky top-0 shadow-md shadow-orange">
     <template #start>
-        <Button icon="pi pi-plus" class="mr-2" severity="secondary" text />
+        <Button icon="pi pi-plus" label="Nova chamada" class="mr-2" severity="secondary" text />
         <Button icon="pi pi-print" class="mr-2" severity="secondary" text />
         <Button icon="pi pi-upload" severity="secondary" text />
     </template>

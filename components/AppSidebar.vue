@@ -9,14 +9,14 @@
                 custom
                 v-slot="{ href, navigate, isActive }"
             >
-                <a :href="href" @click="navigate" :title="item.label" class="flex flex-col items-center no-underline text-gray-700">
+                <a :href="href" @click="navigate" :title="item.label" class="flex flex-col items-center no-underline text-primary-700">
                     <Button
                         :icon="item.icon"
-                        class="w-12 h-12 flex items-center justify-center rounded-lg"
-                        :class="isActive ? 'bg-primary-600 text-primary-800' : 'hover:bg-primary-100'"
+                        class="w-12 h-12 flex items-center justify-center rounded-lg text-primary-500"
+                        :class="isActive ? 'bg-primary-300 text-primary-50' : 'hover:bg-primary-100'"
                         text
                     />
-                    <span class="text-xs text-primary-500 mt-1">{{ item.label }}</span>
+                    <span class="text-xs text-primary-400 mt-1">{{ item.label }}</span>
                 </a>
             </NuxtLink>
         </nav>
@@ -36,7 +36,7 @@ const navItems = ref([
     { key: 'dashboard', label: 'Dashboard', icon: 'pi pi-chart-bar', route: '/' },
     { key: 'profile', label: 'Perfil', icon: 'pi pi-user', route: '/profile' },
     { key: 'call', label: 'Chamadas', icon: 'pi pi-phone', route: '/call' },
-    { key: 'history', label: 'History', icon: 'pi pi-history', route: '/history' },
+    { key: 'history', label: 'Histórico', icon: 'pi pi-history', route: '/history' },
     { key: 'settings', label: 'Configurações', icon: 'pi pi-cog', route: '/settings' }
 
 ]);
