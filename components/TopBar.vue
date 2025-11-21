@@ -5,9 +5,9 @@
 <template>
 <Toolbar class="sticky top-0 shadow-md shadow-orange">
     <template #start>
-        <Button icon="pi pi-plus" label="Nova chamada" class="mr-2" severity="secondary" text />
-        <Button icon="pi pi-print" class="mr-2" severity="secondary" text />
-        <Button icon="pi pi-upload" severity="secondary" text />
+        <Button icon="pi pi-plus color-primary-400" label="Nova chamada" class="bg-primary-400 text-primary-50 p-4" severity="secondary" text />
+        <Button icon="pi pi-print" class="mr-2 p-3" severity="secondary" text />
+        <Button icon="pi pi-upload p-3" severity="secondary" text />
     </template>
 
     <template #center>
@@ -15,7 +15,7 @@
             <InputIcon>
                 <i class="pi pi-search" />
             </InputIcon>
-            <InputText placeholder="Search" />
+            <InputText placeholder="Search"/>
         </IconField>
     </template>
 

@@ -12,7 +12,7 @@ export default defineNuxtConfig({
         options: {
           prefix: 'p',
           darkModeSelector: '.stcall-dark-mode',
-          cssLayer: false
+          cssLayer: true
       }
       },
 
