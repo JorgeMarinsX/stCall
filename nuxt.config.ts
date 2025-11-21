@@ -1,4 +1,4 @@
-import Aura from '@primeuix/themes/aura';
+import stCallTheme from './theme.config';
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   primevue: {
     options: {
       theme: {
-        preset: Aura,
+        preset: stCallTheme,
         options: {
           prefix: 'p',
           darkModeSelector: '.stcall-dark-mode',

@@ -1,4 +1,10 @@
-import PrimeVue from 'primevue/config'
+/* Below there's an example on how to handlee imports to primevue. 
+All the items imported below are already globally available 
+due to the usage of @primevue/nuxt-module in nuxt.config.ts. 
+This file can be used if you want to customize the PrimeVue setup.
+Use it to register only specific components for production */
+
+/*import PrimeVue from 'primevue/config'
 import Avatar from 'primevue/avatar'
 import Button from 'primevue/button'
 import Toolbar from 'primevue/toolbar'
@@ -25,3 +31,5 @@ export default defineNuxtPlugin((nuxtApp) => {
   app.component('Panel', Panel)
   app.component('Card', Card)
 })
+*/
+

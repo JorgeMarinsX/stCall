@@ -5,7 +5,7 @@
     <div class="flex h-screen">
         <AppSidebar />
         <div class="flex-1 flex flex-col">
-            <header class="p-4 border-b">
+            <header class="p-4">
                 <TopBar />
             </header>
             <main class="flex-1 overflow-auto p-4">
@@ -13,6 +13,7 @@
             </main>
         </div>
     </div>
+
 </template>
 
 <script setup>

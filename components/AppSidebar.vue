@@ -13,16 +13,16 @@
                     <Button
                         :icon="item.icon"
                         class="w-12 h-12 flex items-center justify-center rounded-lg"
-                        :class="isActive ? 'bg-primary-600 text-white' : 'hover:bg-gray-100'"
+                        :class="isActive ? 'bg-primary-600 text-primary-800' : 'hover:bg-primary-100'"
                         text
                     />
-                    <span class="text-xs text-gray-500 mt-1">{{ item.label }}</span>
+                    <span class="text-xs text-primary-500 mt-1">{{ item.label }}</span>
                 </a>
             </NuxtLink>
         </nav>
 
         <footer class="pb-2">
-            <NuxtLink to="/login" class="text-gray-600 hover:text-gray-800">
+            <NuxtLink to="/login" class="text-primary-600 hover:text-primary-800">
                 <i class="pi pi-sign-out text-xl"></i>
             </NuxtLink>
         </footer>
