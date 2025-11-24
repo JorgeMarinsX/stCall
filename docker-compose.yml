@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   nuxt-app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: suprahub-dev
+    container_name: stcall-dev
     ports:
       - "3000:3000"
       - "24678:24678"
