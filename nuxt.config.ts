@@ -12,7 +12,7 @@ export default defineNuxtConfig({
         options: {
           prefix: 'p',
           darkModeSelector: '.stcall-dark-mode',
-          cssLayer: true
+          cssLayer: false
       }
       },
 
@@ -44,7 +44,18 @@ export default defineNuxtConfig({
       }
     }
   },
-  compatibilityDate: '2024-11-18'
-}
+  compatibilityDate: '2024-11-18',
+  app: {
+    head:{
+      title: 'stCall - Callcenter Software',
+      meta:[
+        {name: 'viewport', content: 'width=device-width, initial-scale=1'},
+        {charset: 'utf-8'},
+      ],
+      link:[
+        {rel: 'icon', type: 'image/x-icon', href: '/favicon.ico'}
+      ]
+    }
+  }
 
-)
+})

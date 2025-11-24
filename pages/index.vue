@@ -12,6 +12,10 @@
 <script setup>
 import { ref } from 'vue';
 
+useHead({
+  title: 'stCall - Dashboard',
+});
+
 const employeeName = ref(
   'Fulano da Silva'
 );
