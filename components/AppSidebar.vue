@@ -33,10 +33,11 @@
 import { ref } from 'vue';
 
 const navItems = ref([
-    { key: 'dashboard', label: 'Dashboard', icon: 'pi pi-chart-bar', route: '/' },
-    { key: 'profile', label: 'Perfil', icon: 'pi pi-user', route: '/profile' },
+    { key: 'dashboard', label: 'Dashboard', icon: 'pi pi-gauge', route: '/' },
+    { key: 'agents', label: 'Gerenciar Agentes', icon: 'pi pi-users', route: '/agents' },
     { key: 'call', label: 'Chamadas', icon: 'pi pi-phone', route: '/call' },
     { key: 'history', label: 'Histórico', icon: 'pi pi-history', route: '/history' },
+    { key: 'profile', label: 'Perfil', icon: 'pi pi-user', route: '/profile' },
     { key: 'settings', label: 'Configurações', icon: 'pi pi-cog', route: '/settings' }
 
 ]);

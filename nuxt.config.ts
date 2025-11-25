@@ -3,7 +3,7 @@ import stCallTheme from './theme.config';
 export default defineNuxtConfig({
   devtools: { enabled: true },
   
-  modules: ['@primevue/nuxt-module', '@nuxt/devtools', '@nuxtjs/tailwindcss'],
+  modules: ['@primevue/nuxt-module', '@nuxt/devtools', '@nuxtjs/tailwindcss', '@pinia/nuxt'],
   
   primevue: {
     options: {

@@ -1,3 +1,6 @@
 .nuxt/
 node_modules/
 bun.lock
+instructions.md
+roadmap.md
+websockets.md
