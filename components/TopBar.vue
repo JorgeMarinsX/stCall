@@ -41,8 +41,8 @@
     <template #end>
         <div class="flex items-center gap-4">
             <div class="flex flex-col items-center gap-1" role="navigation" aria-label="Main navigation">
-                <Avatar image="/avatar.png" alt="User avatar" class="w-12 h-12" size="large" />
-                <div class="text-sm text-gray-700 dark:text-gray-300">Nome do Colaborador</div>
+                <Avatar :image="authStore.user?.avatar || '/avatar.png'" alt="User avatar" class="w-12 h-12" size="large" />
+                <div class="text-sm text-gray-700 dark:text-gray-300">{{ authStore.userName }}</div>
             </div>
             <div class="flex flex-col items-center gap-1" aria-label="Toggle dark mode">
                 <Button :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" class="p-button-text p-button-plain" @click="toggleDarkMode" />
@@ -54,6 +54,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useAuthStore } from '~/stores/authStore';
+
+const authStore = useAuthStore();
 
 const isDark = ref(false);
 const isConnected = ref(false);

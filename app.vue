@@ -5,16 +5,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { onMounted } from 'vue';
+import { useAuthStore } from '~/stores/authStore';
 
-const items = ref([
-  {
-    label: 'Update',
-    icon: 'pi pi-refresh'
-  },
-  {
-    label: 'Delete',
-    icon: 'pi pi-times'
-  }
-])
+const authStore = useAuthStore();
+
+// Initialize auth on app startup
+onMounted(() => {
+  authStore.checkAuth();
+});
 </script>

@@ -10,9 +10,15 @@ export interface User {
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: null as User | null,
-    isAuthenticated: false,
-    token: null as string | null,
+    // Mock user for development - will be replaced with real auth
+    user: {
+      id: '1',
+      name: 'Fulano da Silva',
+      email: 'fulano@stcall.com',
+      role: 'agent' as const,
+    } as User | null,
+    isAuthenticated: true,
+    token: 'mock-jwt-token' as string | null,
   }),
 
   getters: {
