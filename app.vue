@@ -5,13 +5,6 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
-import { useAuthStore } from '~/stores/authStore';
-
-const authStore = useAuthStore();
-
-// Initialize auth on app startup
-onMounted(() => {
-  authStore.checkAuth();
-});
+// Store initialization is now handled by middleware/auth.global.ts
+// This keeps app.vue clean and moves auth logic to route guards
 </script>

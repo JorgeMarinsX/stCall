@@ -1,4 +1,8 @@
 .nuxt/
 node_modules/
+
+
 instructions.md
 roadmap.md
+websockets.md
+quickstart.md

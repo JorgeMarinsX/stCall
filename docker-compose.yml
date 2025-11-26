@@ -9,11 +9,8 @@ services:
       - "24678:24678"
     volumes:
       - .:/app
-    environment:
-      - NODE_ENV=development
-      - HOST=0.0.0.0
-      - PORT=3000
-      - CHOKIDAR_USEPOLLING=true
+    env_file:
+      - .env
     command: sh -c "bun install --force && bun --bun run dev --no-fork"
     stdin_open: true
     tty: true

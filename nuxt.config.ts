@@ -2,7 +2,22 @@ import stCallTheme from './theme.config';
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  
+
+  runtimeConfig: {
+    // Private keys (server-side only)
+    asteriskUsername: process.env.ASTERISK_USERNAME || 'admin',
+    asteriskPassword: process.env.ASTERISK_PASSWORD || 'changeme',
+
+    // Public keys (exposed to client)
+    public: {
+      asteriskHost: process.env.ASTERISK_HOST || 'localhost',
+      asteriskAmiPort: process.env.ASTERISK_AMI_PORT || '5038',
+      asteriskAriPort: process.env.ASTERISK_ARI_PORT || '8088',
+      asteriskWsPort: process.env.ASTERISK_WS_PORT || '8088',
+      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api'
+    }
+  },
+
   modules: ['@primevue/nuxt-module', '@nuxt/devtools', '@nuxtjs/tailwindcss', '@pinia/nuxt'],
   
   primevue: {

@@ -29,6 +29,7 @@ export const useUiStore = defineStore('ui', {
       systemNotifications: true,
       soundEnabled: true,
     },
+    isInitialized: false,
   }),
 
   getters: {
@@ -119,6 +120,7 @@ export const useUiStore = defineStore('ui', {
     addReleaseNote(releaseNote: ReleaseNote) {
       this.releaseNotes.unshift(releaseNote)
       this.hasUnreadReleaseNotes = true
+      this.persistReleaseNotes()
 
       // Show notification
       this.showNotification(
@@ -136,6 +138,7 @@ export const useUiStore = defineStore('ui', {
 
       // Update unread flag
       this.hasUnreadReleaseNotes = this.releaseNotes.some(n => !n.isRead)
+      this.persistReleaseNotes()
     },
 
     markAllReleaseNotesAsRead() {
@@ -143,6 +146,7 @@ export const useUiStore = defineStore('ui', {
         note.isRead = true
       })
       this.hasUnreadReleaseNotes = false
+      this.persistReleaseNotes()
     },
 
     updateNotificationPreferences(preferences: Partial<typeof this.notificationPreferences>) {
@@ -171,6 +175,74 @@ export const useUiStore = defineStore('ui', {
         // TODO: Add notification sound file and play it
         // const audio = new Audio('/sounds/notification.mp3')
         // audio.play().catch(err => console.error('Failed to play sound:', err))
+      }
+    },
+
+    /**
+     * Load basic preferences that work for both anonymous and authenticated users
+     * Called on every route navigation
+     */
+    loadBasicPreferences() {
+      this.loadDarkModePreference()
+    },
+
+    /**
+     * Initialize authenticated user preferences
+     * Only called after successful authentication
+     */
+    initializeAuthenticated() {
+      if (this.isInitialized) return
+
+      this.loadNotificationPreferences()
+      this.loadReleaseNotes()
+
+      this.isInitialized = true
+    },
+
+    /**
+     * @deprecated Use loadBasicPreferences() and initializeAuthenticated() instead
+     * Initialize the UI store - load all persisted preferences
+     * Call this once on app initialization
+     */
+    initialize() {
+      if (this.isInitialized) return
+
+      this.loadDarkModePreference()
+      this.loadNotificationPreferences()
+      this.loadReleaseNotes()
+
+      this.isInitialized = true
+    },
+
+    /**
+     * Load release notes from localStorage
+     * TODO: Replace with API call to fetch release notes from backend
+     */
+    loadReleaseNotes() {
+      if (import.meta.client) {
+        const saved = localStorage.getItem('release_notes')
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            this.releaseNotes = parsed.map((note: any) => ({
+              ...note,
+              date: new Date(note.date),
+            }))
+            this.hasUnreadReleaseNotes = this.releaseNotes.some(n => !n.isRead)
+          } catch (error) {
+            console.error('Failed to load release notes:', error)
+          }
+        }
+      }
+    },
+
+    /**
+     * Persist release notes to localStorage
+     * TODO: This will be replaced with backend sync when API is ready
+     */
+    persistReleaseNotes() {
+      if (import.meta.client) {
+        localStorage.setItem('release_notes', JSON.stringify(this.releaseNotes))
       }
     },
   },

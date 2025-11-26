@@ -1,0 +1,32 @@
+export default defineNuxtRouteMiddleware(async (to) => {
+  const authStore = useAuthStore()
+  const uiStore = useUiStore()
+
+  // Always load basic UI preferences (works for everyone)
+  if (!uiStore.isInitialized) {
+    uiStore.loadBasicPreferences()
+  }
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/login']
+
+  if (publicRoutes.includes(to.path)) {
+    // If already authenticated, redirect to dashboard
+    if (authStore.isAuthenticated) {
+      return navigateTo('/')
+    }
+    return
+  }
+
+  // Protected routes - check authentication
+  await authStore.checkAuth()
+
+  if (!authStore.isAuthenticated) {
+    return navigateTo('/login')
+  }
+
+  // Load full user-specific preferences for authenticated users
+  if (!uiStore.isInitialized) {
+    uiStore.initializeAuthenticated()
+  }
+})
