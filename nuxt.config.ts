@@ -69,6 +69,11 @@ export default defineNuxtConfig({
       ],
       link:[
         {rel: 'icon', type: 'image/x-icon', href: '/favicon.ico'}
+      ],
+      script: [
+        {
+          innerHTML: '(function(){try{if(localStorage.getItem("dark_mode")==="true")document.documentElement.classList.add("stcall-dark-mode")}catch(e){}})();'
+        }
       ]
     }
   }

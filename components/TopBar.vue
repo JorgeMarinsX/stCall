@@ -53,12 +53,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '~/stores/authStore';
+import { useUiStore } from '~/stores/uiStore';
 
 const authStore = useAuthStore();
+const uiStore = useUiStore();
 
-const isDark = ref(false);
+const isDark = computed(() => uiStore.isDarkMode);
 const isConnected = ref(false);
 const isLoadingCallInfo = ref(false);
 const activeCall = ref(null);
@@ -68,8 +70,7 @@ let callDurationInterval = null;
 // activeCall structure: { callerName: string, callerNumber: string, duration: number (seconds) }
 
 function toggleDarkMode() {
-    document.documentElement.classList.toggle('stcall-dark-mode');
-    isDark.value = !isDark.value;
+    uiStore.toggleDarkMode();
 }
 
 function toggleConnection() {

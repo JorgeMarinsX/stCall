@@ -2,10 +2,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const authStore = useAuthStore()
   const uiStore = useUiStore()
 
-  // Always load basic UI preferences (works for everyone)
-  if (!uiStore.isInitialized) {
-    uiStore.loadBasicPreferences()
-  }
+  
+  uiStore.loadBasicPreferences()
 
   // Public routes that don't require authentication
   const publicRoutes = ['/login']
