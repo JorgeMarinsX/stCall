@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6">
+  <div class="p-6 w-full">
     <!-- Header -->
     <div class="mb-4">
       <h1 class="text-3xl font-semibold mb-2 w-full">Histórico de Chamadas</h1>
@@ -90,7 +90,7 @@
       </template>
     </Card>
     <!-- Data Table -->
-    <Card class="flex-1 flex flex-column ml-5">
+    <Card class="flex flex-column ml-5 w-full">
       <template #content>
         <DataTable
           :value="filteredCalls"

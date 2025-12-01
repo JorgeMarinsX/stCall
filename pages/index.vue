@@ -1,7 +1,7 @@
 <template>
-  <div class="p-6 h-full overflow-auto">
+  <div class="w-100 flex-col flex-grow align-middle justify-center">
     <!-- Header -->
-    <div class="mb-6">
+    <div class="mb-6 flex-row">
       <h1 class="text-3xl font-semibold">
         Bem-vindo, {{ authStore.userName }}
       </h1>
@@ -11,8 +11,7 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="grid mb-6">
-      <div class="col-12 md:col-6 lg:col-3">
+    <div class="flex flex-row">
         <StatCard
           title="Chamadas Hoje"
           :value="callStore.todaysCalls"
@@ -20,29 +19,23 @@
           icon="pi-phone"
           icon-color="text-primary"
         />
-      </div>
 
-      <div class="col-12 md:col-6 lg:col-3">
         <StatCard
-          title="Chamadas Atendidas"
+          title="Atendidas"
           :value="callStore.totalCompletedCalls"
           subtitle="Total histórico"
           icon="pi-check-circle"
           icon-color="text-green-500"
         />
-      </div>
 
-      <div class="col-12 md:col-6 lg:col-3">
         <StatCard
-          title="Chamadas Perdidas"
+          title="Perdidas"
           :value="callStore.totalMissedCalls"
           subtitle="Total histórico"
           icon="pi-times-circle"
           icon-color="text-red-500"
         />
-      </div>
 
-      <div class="col-12 md:col-6 lg:col-3">
         <StatCard
           title="Duração Média"
           :value="formatDuration(callStore.averageCallDuration)"
@@ -50,17 +43,17 @@
           icon="pi-clock"
           icon-color="text-blue-500"
         />
-      </div>
     </div>
 
     <!-- Recent Calls Section -->
-    <Card>
+    <div class="w-full">
+      <Card class="m-5">
       <template #title>
-        <div class="flex align-items-center justify-content-between">
-          <span>Chamadas Recentes</span>
+        <div class="flex align-middle align-items-center justify-content-center w-100">
+          <span class="justify-content-center align-middle align-items-center">Chamadas Recentes</span>
           <NuxtLink
             to="/history"
-            class="text-primary text-sm font-medium flex align-items-center gap-1 no-underline"
+            class="text-primary text-sm font-medium gap-1 no-underline"
           >
             Ver todas
             <i class="pi pi-arrow-right text-xs"></i>
@@ -71,9 +64,9 @@
       <template #content>
         <Divider class="mt-0" />
 
-        <div v-if="callStore.recentCalls.length > 0" class="flex flex-column">
+        <div v-if="callStore.recentCalls.length > 0" class="flex flex-column overflow-auto">
           <RecentCallItem
-            v-for="call in callStore.recentCalls"
+            v-for="call in callStore.recentCalls.slice(0, 4)"
             :key="call.id"
             :direction="call.direction"
             :caller-name="call.callerName"
@@ -81,6 +74,7 @@
             :status="call.status"
             :duration="call.duration"
             :timestamp="call.timestamp"
+            class="flex flex-col w-fit"
           />
         </div>
 
@@ -92,7 +86,8 @@
           </p>
         </div>
       </template>
-    </Card>
+      </Card>
+    </div>
   </div>
 </template>
 

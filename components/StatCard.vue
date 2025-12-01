@@ -1,11 +1,11 @@
 <template>
-  <Card>
+  <Card class="m-5 w-100 flex flex-grow">
     <template #content>
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between">
         <span class="text-muted-color text-sm font-medium">
           {{ title }}
         </span>
-        <i v-if="icon" :class="['pi', icon, 'text-xl', iconColor]"></i>
+        <i v-if="icon" :class="['pi', icon, 'text-xl', iconColor, 'ml-5']"></i>
       </div>
       <div class="text-3xl font-bold">
         {{ value }}
