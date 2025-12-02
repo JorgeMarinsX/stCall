@@ -17,6 +17,7 @@
             icon="pi pi-phone"
             label="Nova chamada"
             class="bg-primary-400 text-white p-3 mr-2"
+            :disabled="hasActiveCall || callStore.isDialing"
             @click="initiateNewCall"
         />
     </template>
@@ -50,24 +51,49 @@
         </div>
     </template>
 </Toolbar>
+
+<!-- Dialer Dialog -->
+<Dialog
+    v-model:visible="dialerVisible"
+    header="Nova chamada"
+    modal
+    :style="{ width: '500px' }"
+>
+    <Dialer
+        v-model:phone-number="phoneNumber"
+        :is-dialing="callStore.isDialing"
+        :show-recent-calls="true"
+        :recent-calls="recentCalls"
+        @call="handleCall"
+    />
+</Dialog>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '~/stores/authStore';
 import { useUiStore } from '~/stores/uiStore';
+import { useCallStore } from '~/stores/callStore';
 
 const authStore = useAuthStore();
 const uiStore = useUiStore();
+const callStore = useCallStore();
+const toast = useToast();
 
 const isDark = computed(() => uiStore.isDarkMode);
 const isConnected = ref(false);
 const isLoadingCallInfo = ref(false);
 const activeCall = ref(null);
+const dialerVisible = ref(false);
+const phoneNumber = ref('');
 let callDurationInterval = null;
 
 // Mock active call data - replace with actual WebSocket data
 // activeCall structure: { callerName: string, callerNumber: string, duration: number (seconds) }
+
+// Computed
+const recentCalls = computed(() => callStore.recentCalls);
+const hasActiveCall = computed(() => callStore.hasActiveCall);
 
 function toggleDarkMode() {
     uiStore.toggleDarkMode();
@@ -80,8 +106,21 @@ function toggleConnection() {
 }
 
 function initiateNewCall() {
-    // TODO: Open new call dialog
-    console.log('Initiating new call');
+    dialerVisible.value = true;
+    phoneNumber.value = '';
+}
+
+function handleCall(number) {
+    callStore.startOutboundCall(number);
+    dialerVisible.value = false;
+    phoneNumber.value = '';
+
+    toast.add({
+        severity: 'info',
+        summary: 'Discando',
+        detail: 'Iniciando chamada...',
+        life: 2000,
+    });
 }
 
 function formatCallDuration(seconds) {
