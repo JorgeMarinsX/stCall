@@ -5,8 +5,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     // Private keys (server-side only)
-    asteriskUsername: process.env.ASTERISK_USERNAME || 'admin',
-    asteriskPassword: process.env.ASTERISK_PASSWORD || 'changeme',
+    asteriskUsername: process.env.ASTERISK_USERNAME || 'stcall',
+    asteriskPassword: process.env.ASTERISK_PASSWORD || 'stcall',
 
     // Public keys (exposed to client)
     public: {
