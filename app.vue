@@ -2,7 +2,7 @@
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
-  <Toast />
+  <Toast position="bottom-right"/>
 </template>
 
 <script setup>

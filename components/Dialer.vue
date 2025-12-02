@@ -1,13 +1,15 @@
 <template>
-  <div class="dialer-component">
+  <div class="dialer-component" @keydown="handleKeydown">
     <!-- Phone Number Input -->
     <div class="mb-6">
       <InputGroup>
         <InputText
+          ref="inputRef"
           v-model="localPhoneNumber"
           placeholder="Digite o número"
           class="text-center text-2xl font-mono"
           @keyup.enter="handleCall"
+          @input="filterInput"
         />
         <Button
           v-if="localPhoneNumber"
@@ -24,10 +26,14 @@
       <Button
         v-for="digit in ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#']"
         :key="digit"
+        :ref="(el) => setButtonRef(digit, el)"
         :label="digit"
         outlined
         size="large"
-        class="h-16 text-2xl font-semibold"
+        :class="[
+          'h-16 text-2xl font-semibold transition-all duration-100',
+          pressedKey === digit ? 'scale-95 bg-orange-100 dark:bg-orange-900' : ''
+        ]"
         @click="addDigit(digit)"
       />
     </div>
@@ -115,15 +121,80 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
+// Refs
+const inputRef = ref<HTMLInputElement | null>(null)
+const buttonRefs = ref<Record<string, any>>({})
+const pressedKey = ref<string | null>(null)
+
 // Local state synced with prop
 const localPhoneNumber = computed({
   get: () => props.phoneNumber,
   set: (value) => emit('update:phoneNumber', value),
 })
 
+// Valid phone characters
+const VALID_CHARS = /[0-9*#+\-() ]/
+
+// Keyboard key mappings
+const KEY_MAP: Record<string, string> = {
+  '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
+  '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+  'Numpad0': '0', 'Numpad1': '1', 'Numpad2': '2', 'Numpad3': '3', 'Numpad4': '4',
+  'Numpad5': '5', 'Numpad6': '6', 'Numpad7': '7', 'Numpad8': '8', 'Numpad9': '9',
+  '*': '*', 'NumpadMultiply': '*',
+  '#': '#', 'NumpadSubtract': '#',
+}
+
 // Methods
+const setButtonRef = (digit: string, el: any) => {
+  if (el) {
+    buttonRefs.value[digit] = el
+  }
+}
+
 const addDigit = (digit: string) => {
   localPhoneNumber.value += digit
+  // Auto-focus input after clicking button
+  inputRef.value?.focus()
+}
+
+const filterInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const filtered = target.value.split('').filter(char => VALID_CHARS.test(char)).join('')
+
+  if (filtered !== target.value) {
+    localPhoneNumber.value = filtered
+  }
+}
+
+const handleKeydown = (event: KeyboardEvent) => {
+  // Map key to digit
+  const digit = KEY_MAP[event.key]
+
+  if (digit) {
+    // Prevent default to avoid double input
+    event.preventDefault()
+
+    // Add digit to phone number
+    localPhoneNumber.value += digit
+
+    // Visual feedback
+    pressedKey.value = digit
+    setTimeout(() => {
+      pressedKey.value = null
+    }, 150)
+  }
+
+  // Handle Enter key (already handled by @keyup.enter on input, but add here for completeness)
+  if (event.key === 'Enter' || event.key === 'NumpadEnter') {
+    handleCall()
+  }
+
+  // Handle Backspace
+  if (event.key === 'Backspace' && localPhoneNumber.value) {
+    event.preventDefault()
+    localPhoneNumber.value = localPhoneNumber.value.slice(0, -1)
+  }
 }
 
 const handleCall = () => {
@@ -131,6 +202,14 @@ const handleCall = () => {
     emit('call', localPhoneNumber.value)
   }
 }
+
+// Auto-focus input when component mounts
+onMounted(() => {
+  // Small delay to ensure DOM is ready
+  setTimeout(() => {
+    inputRef.value?.focus()
+  }, 100)
+})
 </script>
 
 <style scoped>
