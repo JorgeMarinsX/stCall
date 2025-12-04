@@ -4,77 +4,180 @@ export interface User {
   id: string
   name: string
   email: string
-  role: 'agent' | 'admin'
+  role: 'agent' | 'admin' | 'supervisor'
+  extension?: string
   avatar?: string
+}
+
+interface LoginResponse {
+  success: boolean
+  token: string
+  user: {
+    id: string
+    name: string
+    email: string
+    role: 'agent' | 'admin' | 'supervisor'
+    extension: string
+  }
 }
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    // Mock user for development - will be replaced with real auth
-    user: {
-      id: '1',
-      name: 'Fulano da Silva',
-      email: 'fulano@stcall.com',
-      role: 'agent' as const,
-    } as User | null,
-    isAuthenticated: true,
-    token: 'mock-jwt-token' as string | null,
+    user: null as User | null,
+    isAuthenticated: false,
+    token: null as string | null,
+    lastError: null as string | null,
   }),
 
   getters: {
-    isAdmin: (state) => state.user?.role === 'admin',
+    isAdmin: (state) => state.user?.role === 'admin' || state.user?.role === 'supervisor',
     isAgent: (state) => state.user?.role === 'agent',
     userName: (state) => state.user?.name || 'Guest',
   },
 
   actions: {
-    async login(email: string, password: string) {
-      // TODO: Implement Asterisk authentication
-      // For now, mock authentication
-      console.log('Login attempt:', email)
+    async login(email: string, password: string): Promise<boolean> {
+      try {
+        this.lastError = null
 
-      // Mock user data - replace with real Asterisk auth
-      this.user = {
-        id: '1',
-        name: 'Fulano da Silva',
-        email,
-        role: 'agent',
-      }
-      this.isAuthenticated = true
-      this.token = 'mock-jwt-token'
+        // Get WebSocket server URL from runtime config
+        const config = useRuntimeConfig()
+        const wsServerUrl = config.public.wsUrl.replace('ws://', 'http://').replace('wss://', 'https://')
+        const loginUrl = `${wsServerUrl}/auth/login`
 
-      // Store token in localStorage
-      if (import.meta.client) {
-        localStorage.setItem('auth_token', this.token)
+        console.log('Authenticating with WebSocket server:', loginUrl)
+
+        // Call authentication endpoint on WebSocket server
+        const response = await $fetch<LoginResponse>(loginUrl, {
+          method: 'POST',
+          body: { email, password }
+        })
+
+        if (!response.success || !response.token) {
+          this.lastError = 'Resposta de autenticação inválida'
+          return false
+        }
+
+        // Store JWT token
+        this.token = response.token
+        this.user = {
+          id: response.user.id,
+          name: response.user.name,
+          email: response.user.email,
+          role: response.user.role,
+          extension: response.user.extension
+        }
+        this.isAuthenticated = true
+
+        // Persist token in localStorage
+        if (import.meta.client) {
+          localStorage.setItem('auth_token', response.token)
+        }
+
+        // Initialize WebSocket connection with JWT token
+        const asteriskStore = useAsteriskStore()
+        asteriskStore.connect(response.token)
+
+        return true
+
+      } catch (error: any) {
+        console.error('Login failed:', error)
+
+        // Extract error message
+        if (error.data?.error) {
+          this.lastError = error.data.error
+        } else if (error.statusMessage) {
+          this.lastError = error.statusMessage
+        } else if (error.message) {
+          this.lastError = error.message
+        } else {
+          this.lastError = 'Erro ao conectar ao servidor'
+        }
+
+        return false
       }
     },
 
     async logout() {
+      // Disconnect WebSocket before clearing state
+      const asteriskStore = useAsteriskStore()
+      asteriskStore.disconnect()
+
+      // Clear user state
       this.user = null
       this.isAuthenticated = false
       this.token = null
+      this.lastError = null
 
+      // Clear localStorage
       if (import.meta.client) {
         localStorage.removeItem('auth_token')
       }
     },
 
     async checkAuth() {
-      // Check if user is already authenticated
-      if (import.meta.client) {
-        const token = localStorage.getItem('auth_token')
-        if (token) {
-          // TODO: Validate token with Asterisk
-          this.token = token
-          this.isAuthenticated = true
-          // TODO: Fetch user data from Asterisk
-          this.user = {
-            id: '1',
-            name: 'Fulano da Silva',
-            email: 'user@example.com',
-            role: 'agent',
-          }
+      // Only run on client side
+      if (!import.meta.client) return
+
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        this.isAuthenticated = false
+        return
+      }
+
+      try {
+        // Decode JWT to check expiration (basic validation)
+        const payload = this.decodeJWT(token)
+
+        if (!payload || !payload.exp) {
+          // Invalid token format
+          this.logout()
+          return
         }
+
+        // Check if token is expired
+        const now = Math.floor(Date.now() / 1000)
+        if (payload.exp < now) {
+          // Token expired
+          console.log('Token expired, logging out')
+          this.logout()
+          return
+        }
+
+        // Token is valid, restore session
+        this.token = token
+        this.isAuthenticated = true
+
+        // Restore user data from payload
+        // TODO: In production, fetch fresh user data from API
+        this.user = {
+          id: payload.agentId,
+          name: '', // Will be populated from API
+          email: '', // Will be populated from API
+          role: payload.role || 'agent',
+        }
+
+        // Reconnect WebSocket
+        const asteriskStore = useAsteriskStore()
+        asteriskStore.connect(token)
+
+      } catch (error) {
+        console.error('Token validation failed:', error)
+        this.logout()
+      }
+    },
+
+    decodeJWT(token: string): any {
+      try {
+        // Decode JWT payload (basic decode, no signature verification)
+        const parts = token.split('.')
+        if (parts.length !== 3) return null
+
+        const payload = JSON.parse(atob(parts[1]))
+        return payload
+      } catch (error) {
+        console.error('Failed to decode JWT:', error)
+        return null
       }
     },
 

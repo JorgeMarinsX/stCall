@@ -3,6 +3,9 @@ node_modules/
 bun.lock
 
 
+# LLMs
+.claude/
+
 # Environment variables
 .env
 .env.local
@@ -15,6 +18,9 @@ roadmap.md
 websockets.md
 quickstart.md
 ASTERISK_FIX.md
+docs-backend.md
+INTEGRATION-PLAN.md
+architecture.md
 
 
 # AI-Generated diagnostics

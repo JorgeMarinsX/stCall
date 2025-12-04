@@ -14,7 +14,8 @@ export default defineNuxtConfig({
       asteriskAmiPort: process.env.ASTERISK_AMI_PORT || '5038',
       asteriskAriPort: process.env.ASTERISK_ARI_PORT || '8088',
       asteriskWsPort: process.env.ASTERISK_WS_PORT || '8088',
-      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api'
+      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api',
+      wsUrl: process.env.WS_URL || 'ws://localhost:3001'
     }
   },
 
