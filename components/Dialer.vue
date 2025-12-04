@@ -9,6 +9,7 @@
           placeholder="Digite o número"
           class="text-center text-2xl font-mono"
           @keyup.enter="handleCall"
+          @keydown="handleInputKeydown"
           @input="filterInput"
         />
         <Button
@@ -158,7 +159,31 @@ const addDigit = (digit: string) => {
   inputRef.value?.focus()
 }
 
+const handleInputKeydown = (event: KeyboardEvent) => {
+  // Allow control keys
+  const controlKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Tab', 'Enter', 'NumpadEnter']
+
+  // Allow Ctrl/Cmd combinations (for copy, paste, etc.)
+  if (event.ctrlKey || event.metaKey) {
+    return
+  }
+
+  // If it's a control key, allow it
+  if (controlKeys.includes(event.key)) {
+    return
+  }
+
+  // Check if the key is a valid phone character
+  const isValidKey = event.key.length === 1 && VALID_CHARS.test(event.key)
+
+  // If not valid, prevent the default behavior
+  if (!isValidKey) {
+    event.preventDefault()
+  }
+}
+
 const filterInput = (event: Event) => {
+  // This filters pasted content or any other programmatic input
   const target = event.target as HTMLInputElement
   const filtered = target.value.split('').filter(char => VALID_CHARS.test(char)).join('')
 

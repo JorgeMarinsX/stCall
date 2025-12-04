@@ -1,11 +1,11 @@
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
     <div class="flex flex-row items-center mb-8">
-      <h1 class="text-3xl font-bold mb-6 text-center">stCall</h1>
+      <h1 class="text-3xl font-bold mb-6 text-center text-primary-500">stCall</h1>
     </div>
     <Card class="w-full max-w-md">
       <template #title>
-        <h2 class="text-xl font-semibold">Login</h2>
+        <h2 class="text-xl font-semibold w-full align-middle justify-center text-center">Login</h2>
       </template>
       <template #content>
         <form @submit.prevent="onSubmit" class="flex flex-col gap-4">
