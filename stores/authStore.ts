@@ -69,9 +69,10 @@ export const useAuthStore = defineStore('auth', {
         }
         this.isAuthenticated = true
 
-        // Persist token in localStorage
+        // Persist token and user data in localStorage
         if (import.meta.client) {
           localStorage.setItem('auth_token', response.token)
+          localStorage.setItem('auth_user', JSON.stringify(this.user))
         }
 
         // Initialize WebSocket connection with JWT token
@@ -112,15 +113,24 @@ export const useAuthStore = defineStore('auth', {
       // Clear localStorage
       if (import.meta.client) {
         localStorage.removeItem('auth_token')
+        localStorage.removeItem('auth_user')
       }
     },
 
     async checkAuth() {
       // Only run on client side
-      if (!import.meta.client) return
+      if (!import.meta.client) {
+        console.log('checkAuth: Skipping - running on server')
+        return
+      }
 
       const token = localStorage.getItem('auth_token')
-      if (!token) {
+      const userStr = localStorage.getItem('auth_user')
+
+      console.log('checkAuth: token exists?', !!token, 'user exists?', !!userStr)
+
+      if (!token || !userStr) {
+        console.log('checkAuth: No stored auth data, setting isAuthenticated = false')
         this.isAuthenticated = false
         return
       }
@@ -139,27 +149,26 @@ export const useAuthStore = defineStore('auth', {
         const now = Math.floor(Date.now() / 1000)
         if (payload.exp < now) {
           // Token expired
-          console.log('Token expired, logging out')
+          console.log('checkAuth: Token expired, logging out')
           this.logout()
           return
         }
 
         // Token is valid, restore session
+        console.log('checkAuth: Token valid, restoring session')
         this.token = token
         this.isAuthenticated = true
 
-        // Restore user data from payload
-        // TODO: In production, fetch fresh user data from API
-        this.user = {
-          id: payload.agentId,
-          name: '', // Will be populated from API
-          email: '', // Will be populated from API
-          role: payload.role || 'agent',
-        }
+        // Restore full user data from localStorage
+        this.user = JSON.parse(userStr)
+        console.log('checkAuth: User restored:', this.user?.name, this.user?.email)
 
-        // Reconnect WebSocket
-        const asteriskStore = useAsteriskStore()
-        asteriskStore.connect(token)
+        // Reconnect WebSocket (only on client side)
+        if (import.meta.client) {
+          console.log('checkAuth: Reconnecting WebSocket...')
+          const asteriskStore = useAsteriskStore()
+          asteriskStore.connect(token)
+        }
 
       } catch (error) {
         console.error('Token validation failed:', error)

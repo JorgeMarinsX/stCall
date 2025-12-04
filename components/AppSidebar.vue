@@ -22,15 +22,42 @@
         </nav>
 
         <footer class="pb-2">
-            <NuxtLink to="/login" class="text-primary-600 hover:text-primary-800">
+            <button @click="logout" class="text-primary-600 hover:text-primary-800 cursor-pointer bg-transparent border-0" title="Sair">
                 <i class="pi pi-sign-out text-xl"></i>
-            </NuxtLink>
+            </button>
         </footer>
     </aside>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+
+const authStore = useAuthStore()
+const router = useRouter()
+const toast = useToast()
+
+const logout = async () => {
+    try {
+        await authStore.logout()
+
+        toast.add({
+            severity: 'info',
+            summary: 'Logout realizado',
+            detail: 'Você saiu do sistema com sucesso',
+            life: 3000
+        })
+
+        router.push('/login')
+    } catch (error) {
+        console.error('Logout error:', error)
+        toast.add({
+            severity: 'error',
+            summary: 'Erro',
+            detail: 'Falha ao fazer logout',
+            life: 3000
+        })
+    }
+}
 
 const navItems = ref([
     { key: 'dashboard', label: 'Dashboard', icon: 'pi pi-gauge', route: '/' },
