@@ -40,6 +40,16 @@ export const useAsteriskStore = defineStore('asterisk', {
 
         console.log('Connecting to stCall WebSocket Server:', config.public.wsUrl)
 
+        // Get toast instance before setting up callbacks (only on client)
+        let toast: any = null
+        if (import.meta.client) {
+          try {
+            toast = useToast()
+          } catch (e) {
+            console.warn('Toast not available in this context')
+          }
+        }
+
         this.websocket = new WebSocket(wsUrl)
 
         this.websocket.onopen = () => {
@@ -57,8 +67,7 @@ export const useAsteriskStore = defineStore('asterisk', {
           if (wasReconnecting) {
             const { handleReconnectSuccess } = useWebSocketErrors()
             handleReconnectSuccess()
-          } else {
-            const toast = useToast()
+          } else if (toast) {
             toast.add({
               severity: 'success',
               summary: 'Conectado',
@@ -106,22 +115,23 @@ export const useAsteriskStore = defineStore('asterisk', {
             // But warn the user
           }
 
-          // Show notification
-          const toast = useToast()
-          if (hadActiveCall) {
-            toast.add({
-              severity: 'error',
-              summary: 'Conexão perdida',
-              detail: 'Chamada ativa pode ter sido perdida. Tentando reconectar...',
-              life: 5000
-            })
-          } else {
-            toast.add({
-              severity: 'warn',
-              summary: 'Conexão perdida',
-              detail: 'Tentando reconectar...',
-              life: 3000
-            })
+          // Show notification (toast already captured above)
+          if (toast) {
+            if (hadActiveCall) {
+              toast.add({
+                severity: 'error',
+                summary: 'Conexão perdida',
+                detail: 'Chamada ativa pode ter sido perdida. Tentando reconectar...',
+                life: 5000
+              })
+            } else {
+              toast.add({
+                severity: 'warn',
+                summary: 'Conexão perdida',
+                detail: 'Tentando reconectar...',
+                life: 3000
+              })
+            }
           }
 
           // Auto-reconnect logic
@@ -134,13 +144,20 @@ export const useAsteriskStore = defineStore('asterisk', {
         this.connectionStatus = 'error'
         this.lastError = error.message || 'Falha ao estabelecer conexão'
 
-        const toast = useToast()
-        toast.add({
-          severity: 'error',
-          summary: 'Erro de conexão',
-          detail: this.lastError,
-          life: 5000
-        })
+        // Try to get toast instance for error notification
+        if (import.meta.client) {
+          try {
+            const toast = useToast()
+            toast.add({
+              severity: 'error',
+              summary: 'Erro de conexão',
+              detail: this.lastError,
+              life: 5000
+            })
+          } catch (e) {
+            console.error('Could not show toast notification:', e)
+          }
+        }
       }
     },
 
@@ -201,8 +218,8 @@ export const useAsteriskStore = defineStore('asterisk', {
           break
 
         case 'system':
-          // Server notification
-          console.log('System message:', message.data)
+          // Server notification - display to user
+          this.handleSystemMessage(message.data)
           break
 
         case 'pong':
@@ -344,6 +361,37 @@ export const useAsteriskStore = defineStore('asterisk', {
       if (this.heartbeatInterval) {
         clearInterval(this.heartbeatInterval)
         this.heartbeatInterval = null
+      }
+    },
+
+    handleSystemMessage(data: any) {
+      console.log('System message:', data)
+
+      // Display system messages as toast notifications (only on client)
+      if (import.meta.client) {
+        try {
+          const toast = useToast()
+
+          // Map severity from backend to PrimeVue toast severity
+          let severity: 'success' | 'info' | 'warn' | 'error' = 'info'
+          if (data.severity === 'warning') {
+            severity = 'warn'
+          } else if (data.severity === 'error') {
+            severity = 'error'
+          } else if (data.severity === 'success') {
+            severity = 'success'
+          }
+
+          // Show toast notification
+          toast.add({
+            severity,
+            summary: severity === 'error' ? 'Erro' : severity === 'warn' ? 'Atenção' : 'Informação',
+            detail: data.message,
+            life: severity === 'error' ? 10000 : 5000, // Errors stay longer
+          })
+        } catch (e) {
+          console.error('Could not show system message toast:', e)
+        }
       }
     },
 

@@ -2,9 +2,16 @@
   <div class="w-100 flex-col flex-grow align-middle justify-center">
     <!-- Header -->
     <div class="mb-6 flex-row">
-      <h1 class="text-3xl font-semibold">
-        Bem-vindo, {{ authStore.userName }}
-      </h1>
+      <ClientOnly>
+        <h1 class="text-3xl font-semibold">
+          Bem-vindo, {{ authStore.userName }}
+        </h1>
+        <template #fallback>
+          <h1 class="text-3xl font-semibold">
+            <Skeleton width="20rem" height="2rem" />
+          </h1>
+        </template>
+      </ClientOnly>
       <p class="text-muted-color mt-1">
         Seu painel de controle e estatísticas
       </p>

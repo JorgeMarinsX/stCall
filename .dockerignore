@@ -1,6 +1,6 @@
 .nuxt/
 node_modules/
-
+.logs/
 
 instructions.md
 roadmap.md

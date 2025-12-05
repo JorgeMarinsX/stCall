@@ -5,11 +5,13 @@
 <template>
 <Toolbar class="sticky top-0 shadow-md shadow-orange">
     <template #start>
-        <!-- WebSocket Connection Status Indicator -->
-        <div v-if="connectionStatus !== 'connected'" class="bg-red-500 text-white px-3 py-2 rounded-md text-sm mr-2 flex items-center gap-2">
-            <i class="pi pi-exclamation-triangle"></i>
-            <span>WebSocket desconectado</span>
-        </div>
+        <!-- WebSocket Connection Status Indicator - ClientOnly to prevent hydration mismatch -->
+        <ClientOnly>
+            <div v-if="connectionStatus !== 'connected'" class="bg-red-500 text-white px-3 py-2 rounded-md text-sm mr-2 flex items-center gap-2">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>WebSocket desconectado</span>
+            </div>
+        </ClientOnly>
 
         <Button
             :icon="isConnected ? 'pi pi-link' : 'pi pi-link-slash'"
@@ -52,10 +54,19 @@
 
     <template #end>
         <div class="flex items-center gap-4">
-            <div class="flex flex-col items-center gap-1" role="navigation" aria-label="Main navigation">
-                <Avatar :image="authStore.user?.avatar || '/avatar.png'" alt="User avatar" class="w-12 h-12" size="large" />
-                <div class="text-sm text-gray-700 dark:text-gray-300">{{ authStore.userName }}</div>
-            </div>
+            <!-- Use ClientOnly to prevent hydration mismatch -->
+            <ClientOnly>
+                <div class="flex flex-col items-center gap-1" role="navigation" aria-label="Main navigation">
+                    <Avatar :image="authStore.user?.avatar || '/avatar.png'" alt="User avatar" class="w-12 h-12" size="large" />
+                    <div class="text-sm text-gray-700 dark:text-gray-300">{{ authStore.userName }}</div>
+                </div>
+                <template #fallback>
+                    <div class="flex flex-col items-center gap-1">
+                        <Skeleton shape="circle" size="3rem" />
+                        <Skeleton width="6rem" height="1rem" />
+                    </div>
+                </template>
+            </ClientOnly>
             <div class="flex flex-col items-center gap-1" aria-label="Toggle dark mode">
                 <Button :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" class="p-button-text p-button-plain" @click="toggleDarkMode" />
             </div>

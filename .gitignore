@@ -1,7 +1,7 @@
 .nuxt/
 node_modules/
 bun.lock
-
+.logs/
 
 # LLMs
 .claude/

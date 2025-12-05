@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: false,
     token: null as string | null,
     lastError: null as string | null,
+    isHydrating: true, // Track hydration state to prevent SSR mismatch
   }),
 
   getters: {
@@ -49,15 +50,32 @@ export const useAuthStore = defineStore('auth', {
         }
         this.isAuthenticated = true
 
-        // Persist token and user data in localStorage
+        // Persist to both localStorage AND cookies
         if (import.meta.client) {
           localStorage.setItem('auth_token', response.token)
           localStorage.setItem('auth_user', JSON.stringify(this.user))
+
+          // Also set cookies for SSR checks
+          const tokenCookie = useCookie('auth_token', {
+            maxAge: 8 * 60 * 60,
+            secure: import.meta.prod,
+            sameSite: 'lax'
+          })
+          const userCookie = useCookie('auth_user', {
+            maxAge: 8 * 60 * 60,
+            secure: import.meta.prod,
+            sameSite: 'lax'
+          })
+          tokenCookie.value = response.token
+          userCookie.value = JSON.stringify(this.user)
         }
 
         // Initialize WebSocket connection with JWT token
         const asteriskStore = useAsteriskStore()
         asteriskStore.connect(response.token)
+
+        // Mark hydration as complete on successful login
+        this.isHydrating = false
 
         return true
 
@@ -89,11 +107,18 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
       this.token = null
       this.lastError = null
+      this.isHydrating = false
 
-      // Clear localStorage
+      // Clear localStorage and cookies
       if (import.meta.client) {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_user')
+
+        // Clear cookies too
+        const tokenCookie = useCookie('auth_token')
+        const userCookie = useCookie('auth_user')
+        tokenCookie.value = null
+        userCookie.value = null
       }
     },
 
@@ -104,6 +129,7 @@ export const useAuthStore = defineStore('auth', {
         return
       }
 
+      // Read from localStorage (primary storage)
       const token = localStorage.getItem('auth_token')
       const userStr = localStorage.getItem('auth_user')
 
@@ -112,6 +138,7 @@ export const useAuthStore = defineStore('auth', {
       if (!token || !userStr) {
         console.log('checkAuth: No stored auth data, setting isAuthenticated = false')
         this.isAuthenticated = false
+        this.isHydrating = false
         return
       }
 
@@ -139,8 +166,8 @@ export const useAuthStore = defineStore('auth', {
         this.token = token
         this.isAuthenticated = true
 
-        // Restore full user data from localStorage
-        this.user = JSON.parse(userStr)
+        // Restore full user data
+        this.user = JSON.parse(userStr as string)
         console.log('checkAuth: User restored:', this.user?.name, this.user?.email)
 
         // Reconnect WebSocket (only on client side)
@@ -150,9 +177,13 @@ export const useAuthStore = defineStore('auth', {
           asteriskStore.connect(token)
         }
 
+        // Mark hydration as complete
+        this.isHydrating = false
+
       } catch (error) {
         console.error('Token validation failed:', error)
         this.logout()
+        this.isHydrating = false
       }
     },
 
