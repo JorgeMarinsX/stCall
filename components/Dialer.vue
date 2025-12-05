@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CallHistory } from '~/stores/callStore'
+import type { CallHistory } from '~/types'
 
 interface Props {
   phoneNumber?: string

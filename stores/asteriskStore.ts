@@ -1,23 +1,5 @@
 import { defineStore } from 'pinia'
-
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
-
-export interface AsteriskEvent {
-  type: string
-  data: any
-  timestamp: Date
-}
-
-interface PendingCommand {
-  resolve: (value: any) => void
-  reject: (reason: any) => void
-}
-
-interface WebSocketMessage {
-  type: 'event' | 'system' | 'pong' | 'command_response' | 'ping' | 'command'
-  requestId?: string
-  data?: any
-}
+import type { ConnectionStatus, PendingCommand, WebSocketMessage, AsteriskEvent } from '~/types'
 
 export const useAsteriskStore = defineStore('asterisk', {
   state: () => ({
@@ -29,7 +11,7 @@ export const useAsteriskStore = defineStore('asterisk', {
     events: [] as AsteriskEvent[],
     isReconnecting: false,
     pendingCommands: new Map<string, PendingCommand>(),
-    heartbeatInterval: null as NodeJS.Timeout | null,
+    heartbeatInterval: null as ReturnType<typeof setInterval> | null,
     lastPongTime: 0,
     jwtToken: null as string | null,
   }),
@@ -62,6 +44,8 @@ export const useAsteriskStore = defineStore('asterisk', {
 
         this.websocket.onopen = () => {
           console.log('✅ WebSocket connected to stCall server')
+          const wasReconnecting = this.isReconnecting
+
           this.connectionStatus = 'connected'
           this.reconnectAttempts = 0
           this.isReconnecting = false
@@ -69,14 +53,19 @@ export const useAsteriskStore = defineStore('asterisk', {
           // Start heartbeat
           this.startHeartbeat()
 
-          // Show success notification
-          const toast = useToast()
-          toast.add({
-            severity: 'success',
-            summary: 'Conectado',
-            detail: 'Conexão estabelecida com sucesso',
-            life: 3000
-          })
+          // Show appropriate success notification
+          if (wasReconnecting) {
+            const { handleReconnectSuccess } = useWebSocketErrors()
+            handleReconnectSuccess()
+          } else {
+            const toast = useToast()
+            toast.add({
+              severity: 'success',
+              summary: 'Conectado',
+              detail: 'Conexão estabelecida com sucesso',
+              life: 3000
+            })
+          }
         }
 
         this.websocket.onmessage = (event) => {
@@ -92,6 +81,10 @@ export const useAsteriskStore = defineStore('asterisk', {
           console.error('❌ WebSocket error:', error)
           this.connectionStatus = 'error'
           this.lastError = 'Erro de conexão com o servidor'
+
+          // Notify user of connection error
+          const { handleConnectionError } = useWebSocketErrors()
+          handleConnectionError(this.lastError)
         }
 
         this.websocket.onclose = (event) => {
@@ -102,14 +95,34 @@ export const useAsteriskStore = defineStore('asterisk', {
           // Stop heartbeat
           this.stopHeartbeat()
 
+          // Check if there was an active call - warn user
+          const callStore = useCallStore()
+          const hadActiveCall = callStore.hasActiveCall
+
+          // Clear active call state on disconnect (prevents stale data)
+          if (hadActiveCall) {
+            console.warn('Active call lost due to WebSocket disconnection')
+            // Don't clear the call here - let callStore handle it
+            // But warn the user
+          }
+
           // Show notification
           const toast = useToast()
-          toast.add({
-            severity: 'warn',
-            summary: 'Conexão perdida',
-            detail: 'Tentando reconectar...',
-            life: 3000
-          })
+          if (hadActiveCall) {
+            toast.add({
+              severity: 'error',
+              summary: 'Conexão perdida',
+              detail: 'Chamada ativa pode ter sido perdida. Tentando reconectar...',
+              life: 5000
+            })
+          } else {
+            toast.add({
+              severity: 'warn',
+              summary: 'Conexão perdida',
+              detail: 'Tentando reconectar...',
+              life: 3000
+            })
+          }
 
           // Auto-reconnect logic
           if (this.canReconnect && !this.isReconnecting && this.jwtToken) {
@@ -143,8 +156,11 @@ export const useAsteriskStore = defineStore('asterisk', {
       this.reconnectAttempts = 0
       this.jwtToken = null
 
-      // Reject all pending commands
+      // Reject all pending commands and clear their timeouts to prevent memory leaks
       this.pendingCommands.forEach((pending) => {
+        if (pending.timeoutId) {
+          clearTimeout(pending.timeoutId)
+        }
         pending.reject(new Error('WebSocket disconnected'))
       })
       this.pendingCommands.clear()
@@ -153,11 +169,19 @@ export const useAsteriskStore = defineStore('asterisk', {
     async attemptReconnect() {
       if (!this.canReconnect || !this.jwtToken) {
         console.error('Cannot reconnect: max attempts reached or no token')
+
+        // Notify user that reconnection failed
+        const { handleReconnectFailure } = useWebSocketErrors()
+        handleReconnectFailure()
         return
       }
 
       this.isReconnecting = true
       this.reconnectAttempts++
+
+      // Notify user about reconnection attempt
+      const { handleReconnectAttempt } = useWebSocketErrors()
+      handleReconnectAttempt(this.reconnectAttempts, this.maxReconnectAttempts)
 
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
       console.log(`Attempting reconnection in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
@@ -231,7 +255,7 @@ export const useAsteriskStore = defineStore('asterisk', {
         case 'ChannelHangupRequest':
         case 'StasisEnd':
           // Call ended
-          callStore.hangup()
+          callStore.endCall(event.channel.id)
           break
 
         default:
@@ -243,15 +267,28 @@ export const useAsteriskStore = defineStore('asterisk', {
     sendCommand(action: string, params: any): Promise<any> {
       return new Promise((resolve, reject) => {
         if (!this.isConnected) {
-          reject(new Error('WebSocket não conectado'))
+          const error = new Error('WebSocket não conectado')
+          const { handleConnectionError } = useWebSocketErrors()
+          handleConnectionError('Não foi possível executar o comando: WebSocket desconectado')
+          reject(error)
           return
         }
 
         // Generate unique request ID
-        const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        const requestId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
-        // Store pending request
-        this.pendingCommands.set(requestId, { resolve, reject })
+        // Timeout after 10 seconds (store timeout ID to clear it on success)
+        const timeoutId = setTimeout(() => {
+          if (this.pendingCommands.has(requestId)) {
+            this.pendingCommands.delete(requestId)
+            const { handleTimeout } = useWebSocketErrors()
+            handleTimeout(action)
+            reject(new Error('Comando expirou (timeout)'))
+          }
+        }, 10000)
+
+        // Store pending request with timeout ID
+        this.pendingCommands.set(requestId, { resolve, reject, timeoutId })
 
         // Send command
         const message: WebSocketMessage = {
@@ -261,14 +298,6 @@ export const useAsteriskStore = defineStore('asterisk', {
         }
 
         this.sendMessage(message)
-
-        // Timeout after 10 seconds
-        setTimeout(() => {
-          if (this.pendingCommands.has(requestId)) {
-            this.pendingCommands.delete(requestId)
-            reject(new Error('Comando expirou (timeout)'))
-          }
-        }, 10000)
       })
     },
 
@@ -277,6 +306,11 @@ export const useAsteriskStore = defineStore('asterisk', {
 
       const pending = this.pendingCommands.get(message.requestId)
       if (pending) {
+        // Clear timeout to prevent memory leak
+        if (pending.timeoutId) {
+          clearTimeout(pending.timeoutId)
+        }
+
         if (message.data?.success) {
           pending.resolve(message.data.result)
         } else {

@@ -1,26 +1,5 @@
 import { defineStore } from 'pinia'
-
-export type AgentStatus = 'available' | 'on_call' | 'unavailable' | 'offline'
-
-export interface Agent {
-  id: string
-  name: string
-  email: string
-  extension?: string
-  status: AgentStatus
-  currentCallId?: string
-  currentCallNumber?: string
-  callStartTime?: Date
-  isConnected: boolean
-}
-
-export interface AgentStats {
-  totalCalls: number
-  answeredCalls: number
-  missedCalls: number
-  averageDuration: number
-  todayCalls: number
-}
+import type { AgentStatus, Agent, AgentStats } from '~/types'
 
 export const useAgentStore = defineStore('agent', {
   state: () => ({
@@ -49,25 +28,54 @@ export const useAgentStore = defineStore('agent', {
 
   actions: {
     async connectToQueue() {
-      // TODO: Send connect command to Asterisk
-      console.log('Connecting agent to queue...')
+      const asteriskStore = useAsteriskStore()
+      const authStore = useAuthStore()
 
-      this.isConnectedToQueue = true
-      this.currentAgentStatus = 'available'
+      try {
+        // Register agent to receive calls via WebSocket
+        await asteriskStore.sendCommand('registerAgent', {
+          agentId: authStore.user?.id,
+          extension: authStore.user?.extension,
+        })
 
-      // TODO: Implement actual Asterisk queue connection
-      // Example: asteriskStore.send({ action: 'QueueAdd', queue: 'support', interface: 'SIP/agent' })
+        this.isConnectedToQueue = true
+        this.currentAgentStatus = 'available'
+
+        console.log('✅ Agent connected to queue, extension:', authStore.user?.extension)
+
+      } catch (error: any) {
+        console.error('❌ Failed to connect to queue:', error)
+        this.isConnectedToQueue = false
+        this.currentAgentStatus = 'offline'
+        throw error
+      }
     },
 
     async disconnectFromQueue() {
-      // TODO: Send disconnect command to Asterisk
-      console.log('Disconnecting agent from queue...')
+      const asteriskStore = useAsteriskStore()
+      const authStore = useAuthStore()
+      const callStore = useCallStore()
 
-      this.isConnectedToQueue = false
-      this.currentAgentStatus = 'offline'
+      try {
+        // Check if there's an active call - warn but allow disconnect
+        if (callStore.hasActiveCall) {
+          console.warn('⚠️ Disconnecting while on active call')
+        }
 
-      // TODO: Implement actual Asterisk queue disconnection
-      // Example: asteriskStore.send({ action: 'QueueRemove', queue: 'support', interface: 'SIP/agent' })
+        // Unregister agent from receiving calls
+        await asteriskStore.sendCommand('unregisterAgent', {
+          agentId: authStore.user?.id,
+        })
+
+        this.isConnectedToQueue = false
+        this.currentAgentStatus = 'offline'
+
+        console.log('✅ Agent disconnected from queue')
+
+      } catch (error: any) {
+        console.error('❌ Failed to disconnect from queue:', error)
+        throw error
+      }
     },
 
     updateAgentStatus(agentId: string, status: AgentStatus, callInfo?: { callId?: string; callNumber?: string }) {
@@ -180,6 +188,37 @@ export const useAgentStore = defineStore('agent', {
 
     updateStats(stats: Partial<AgentStats>) {
       this.stats = { ...this.stats, ...stats }
+    },
+
+    // Handle agent status changes from call events
+    onCallStarted(callId: string, callNumber: string) {
+      // Update current agent status when a call starts
+      this.currentAgentStatus = 'on_call'
+      console.log('📞 Agent status updated to on_call')
+    },
+
+    onCallEnded() {
+      // Update current agent status when a call ends
+      if (this.isConnectedToQueue) {
+        this.currentAgentStatus = 'available'
+      } else {
+        this.currentAgentStatus = 'offline'
+      }
+      console.log('📞 Agent status updated to', this.currentAgentStatus)
+    },
+
+    setUnavailable() {
+      // Allow agent to manually set themselves as unavailable
+      this.currentAgentStatus = 'unavailable'
+      console.log('📞 Agent status set to unavailable')
+    },
+
+    setAvailable() {
+      // Allow agent to manually set themselves as available
+      if (this.isConnectedToQueue) {
+        this.currentAgentStatus = 'available'
+        console.log('📞 Agent status set to available')
+      }
     },
   },
 })

@@ -129,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Call } from '~/stores/callStore'
+import type { Call } from '~/types'
 
 interface Props {
   call: Call | null

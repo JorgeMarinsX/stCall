@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+  <div class="min-h-screen w-full flex flex-col items-center justify-center bg-gray-50">
     <div class="flex flex-row items-center mb-8">
       <h1 class="text-3xl font-bold mb-6 text-center text-primary-500">stCall</h1>
     </div>

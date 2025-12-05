@@ -18,11 +18,13 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+interface Props {
   title: string
   value: string | number
   subtitle?: string
   icon?: string
   iconColor?: string
-}>()
+}
+
+defineProps<Props>()
 </script>

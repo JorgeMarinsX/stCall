@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CallDirection } from '~/stores/callStore'
+import type { CallDirection } from '~/types'
 
 const props = defineProps<{
   direction: CallDirection

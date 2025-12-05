@@ -198,7 +198,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useCallStore } from '~/stores/callStore'
-import type { CallHistory } from '~/stores/callStore'
+import type { CallHistory } from '~/types'
 
 useHead({
   title: 'stCall - Histórico de Chamadas',

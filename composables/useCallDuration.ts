@@ -1,5 +1,5 @@
 import { ref, watch, onUnmounted } from 'vue'
-import type { Call } from '~/stores/callStore'
+import type { Call } from '~/types'
 
 /**
  * Composable for tracking active call duration

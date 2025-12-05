@@ -250,7 +250,7 @@
 
 <script setup lang="ts">
 import { useAgentStore } from '~/stores/agentStore'
-import type { Agent } from '~/stores/agentStore'
+import type { Agent } from '~/types'
 import { FilterMatchMode } from '@primevue/core/api'
 
 useHead({
