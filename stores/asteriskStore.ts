@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import type { ConnectionStatus, PendingCommand, WebSocketMessage, AsteriskEvent } from '~/types'
+import { globalToast } from '~/utils/toastManager'
 
 export const useAsteriskStore = defineStore('asterisk', {
   state: () => ({
     connectionStatus: 'disconnected' as ConnectionStatus,
     websocket: null as WebSocket | null,
-    lastError: null as string | null,
+    lastError: undefined as string | undefined,
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
     events: [] as AsteriskEvent[],
@@ -30,7 +31,7 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
 
       this.connectionStatus = 'connecting'
-      this.lastError = null
+      this.lastError = undefined
       this.jwtToken = jwtToken
 
       try {
@@ -39,16 +40,6 @@ export const useAsteriskStore = defineStore('asterisk', {
         const wsUrl = `${config.public.wsUrl}/?token=${jwtToken}`
 
         console.log('Connecting to stCall WebSocket Server:', config.public.wsUrl)
-
-        // Get toast instance before setting up callbacks (only on client)
-        let toast: any = null
-        if (import.meta.client) {
-          try {
-            toast = useToast()
-          } catch (e) {
-            console.warn('Toast not available in this context')
-          }
-        }
 
         this.websocket = new WebSocket(wsUrl)
 
@@ -63,17 +54,19 @@ export const useAsteriskStore = defineStore('asterisk', {
           // Start heartbeat
           this.startHeartbeat()
 
-          // Show appropriate success notification
+          // Show appropriate success notification using global toast
           if (wasReconnecting) {
-            const { handleReconnectSuccess } = useWebSocketErrors()
-            handleReconnectSuccess()
-          } else if (toast) {
-            toast.add({
-              severity: 'success',
-              summary: 'Conectado',
-              detail: 'Conexão estabelecida com sucesso',
-              life: 3000
-            })
+            globalToast.success(
+              'Reconectado',
+              'Conexão restabelecida com sucesso',
+              3000
+            )
+          } else {
+            globalToast.success(
+              'Conectado',
+              'Conexão estabelecida com sucesso',
+              3000
+            )
           }
         }
 
@@ -108,30 +101,19 @@ export const useAsteriskStore = defineStore('asterisk', {
           const callStore = useCallStore()
           const hadActiveCall = callStore.hasActiveCall
 
-          // Clear active call state on disconnect (prevents stale data)
           if (hadActiveCall) {
             console.warn('Active call lost due to WebSocket disconnection')
-            // Don't clear the call here - let callStore handle it
-            // But warn the user
-          }
-
-          // Show notification (toast already captured above)
-          if (toast) {
-            if (hadActiveCall) {
-              toast.add({
-                severity: 'error',
-                summary: 'Conexão perdida',
-                detail: 'Chamada ativa pode ter sido perdida. Tentando reconectar...',
-                life: 5000
-              })
-            } else {
-              toast.add({
-                severity: 'warn',
-                summary: 'Conexão perdida',
-                detail: 'Tentando reconectar...',
-                life: 3000
-              })
-            }
+            globalToast.error(
+              'Conexão perdida',
+              'Chamada ativa pode ter sido perdida. Tentando reconectar...',
+              5000
+            )
+          } else {
+            globalToast.warn(
+              'Conexão perdida',
+              'Tentando reconectar...',
+              3000
+            )
           }
 
           // Auto-reconnect logic
@@ -144,20 +126,12 @@ export const useAsteriskStore = defineStore('asterisk', {
         this.connectionStatus = 'error'
         this.lastError = error.message || 'Falha ao estabelecer conexão'
 
-        // Try to get toast instance for error notification
-        if (import.meta.client) {
-          try {
-            const toast = useToast()
-            toast.add({
-              severity: 'error',
-              summary: 'Erro de conexão',
-              detail: this.lastError,
-              life: 5000
-            })
-          } catch (e) {
-            console.error('Could not show toast notification:', e)
-          }
-        }
+        // Show error notification using global toast
+        globalToast.error(
+          'Erro de conexão',
+          this.lastError,
+          5000
+        )
       }
     },
 
@@ -367,32 +341,23 @@ export const useAsteriskStore = defineStore('asterisk', {
     handleSystemMessage(data: any) {
       console.log('System message:', data)
 
-      // Display system messages as toast notifications (only on client)
-      if (import.meta.client) {
-        try {
-          const toast = useToast()
+      // Map severity from backend to our toast methods
+      const severity = data.severity === 'warning' ? 'warn' :
+                       data.severity === 'error' ? 'error' :
+                       data.severity === 'success' ? 'success' : 'info'
 
-          // Map severity from backend to PrimeVue toast severity
-          let severity: 'success' | 'info' | 'warn' | 'error' = 'info'
-          if (data.severity === 'warning') {
-            severity = 'warn'
-          } else if (data.severity === 'error') {
-            severity = 'error'
-          } else if (data.severity === 'success') {
-            severity = 'success'
-          }
+      const summary = severity === 'error' ? 'Erro' :
+                     severity === 'warn' ? 'Atenção' : 'Informação'
 
-          // Show toast notification
-          toast.add({
-            severity,
-            summary: severity === 'error' ? 'Erro' : severity === 'warn' ? 'Atenção' : 'Informação',
-            detail: data.message,
-            life: severity === 'error' ? 10000 : 5000, // Errors stay longer
-          })
-        } catch (e) {
-          console.error('Could not show system message toast:', e)
-        }
-      }
+      const life = severity === 'error' ? 10000 : 5000
+
+      // Show toast notification using global toast manager
+      globalToast.add({
+        severity,
+        summary,
+        detail: data.message,
+        life
+      })
     },
 
     handleEvent(event: AsteriskEvent) {

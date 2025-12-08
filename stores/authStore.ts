@@ -58,12 +58,12 @@ export const useAuthStore = defineStore('auth', {
           // Also set cookies for SSR checks
           const tokenCookie = useCookie('auth_token', {
             maxAge: 8 * 60 * 60,
-            secure: import.meta.prod,
+            secure: import.meta.env.PROD,
             sameSite: 'lax'
           })
           const userCookie = useCookie('auth_user', {
             maxAge: 8 * 60 * 60,
-            secure: import.meta.prod,
+            secure: import.meta.env.PROD,
             sameSite: 'lax'
           })
           tokenCookie.value = response.token
