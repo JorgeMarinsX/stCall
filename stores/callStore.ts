@@ -117,43 +117,47 @@ export const useCallStore = defineStore('call', {
   },
 
   actions: {
-    async startOutboundCall(number: string) {
-      const asteriskStore = useAsteriskStore()
-      const authStore = useAuthStore()
+    // State setters - simple mutations without business logic
+    setIsDialing(value: boolean) {
+      this.isDialing = value
+    },
 
-      this.isDialing = true
+    setActiveCall(call: Call | null) {
+      this.activeCall = call
+    },
 
-      try {
-        // Send originate command via WebSocket
-        const result = await asteriskStore.sendCommand('originate', {
-          endpoint: `PJSIP/${authStore.user?.extension}`, // Agent's extension
-          extension: number,
-          context: 'from-internal',
-          priority: 1,
-        })
+    clearActiveCall() {
+      this.activeCall = null
+    },
 
-        // Create local call object with channel ID from Asterisk
-        const call: Call = {
-          id: result.channelId || `call-${Date.now()}`, // Use channel ID from Asterisk
-          number,
-          direction: 'outbound',
-          status: 'ringing',
-          startTime: new Date(),
-          duration: 0,
-          isMuted: false,
-          isOnHold: false,
-        }
+    setIncomingCall(call: Call | null) {
+      this.incomingCall = call
+    },
 
-        this.activeCall = call
-        console.log('✅ Outbound call initiated:', number, 'Channel ID:', call.id)
+    clearIncomingCall() {
+      this.incomingCall = null
+    },
 
-      } catch (error: any) {
-        console.error('❌ Failed to start outbound call:', error)
-        this.isDialing = false
-        throw error
+    setMuted(isMuted: boolean) {
+      if (this.activeCall) {
+        this.activeCall.isMuted = isMuted
       }
     },
 
+    setHold(isOnHold: boolean) {
+      if (this.activeCall) {
+        this.activeCall.isOnHold = isOnHold
+        this.activeCall.status = isOnHold ? 'hold' : 'active'
+      }
+    },
+
+    setCallStatus(status: CallStatus) {
+      if (this.activeCall) {
+        this.activeCall.status = status
+      }
+    },
+
+    // Event handlers - called by WebSocket events (not business logic)
     receiveIncomingCall(callData: { number: string; callerName?: string; callId: string }) {
       const call: Call = {
         id: callData.callId,
@@ -171,179 +175,6 @@ export const useCallStore = defineStore('call', {
       console.log('Incoming call from:', callData.number)
     },
 
-    async answerCall() {
-      if (!this.incomingCall) return
-
-      const asteriskStore = useAsteriskStore()
-      const agentStore = useAgentStore()
-
-      try {
-        await asteriskStore.sendCommand('answer', {
-          channelId: this.incomingCall.id,
-        })
-
-        // Update local state - actual status will be updated via WebSocket event
-        this.activeCall = { ...this.incomingCall, status: 'active' }
-        this.incomingCall = null
-
-        // Update agent status to on_call
-        agentStore.onCallStarted(this.activeCall.id, this.activeCall.number)
-
-        console.log('✅ Call answered, channel ID:', this.activeCall.id)
-
-      } catch (error: any) {
-        console.error('❌ Failed to answer call:', error)
-        throw error
-      }
-    },
-
-    async rejectCall() {
-      if (!this.incomingCall) return
-
-      const asteriskStore = useAsteriskStore()
-
-      try {
-        await asteriskStore.sendCommand('hangup', {
-          channelId: this.incomingCall.id,
-        })
-
-        // Add to history as rejected
-        this.addToHistory({
-          id: this.incomingCall.id,
-          number: this.incomingCall.number,
-          callerName: this.incomingCall.callerName,
-          direction: this.incomingCall.direction,
-          duration: 0,
-          timestamp: new Date(),
-          status: 'rejected',
-        })
-
-        this.incomingCall = null
-        console.log('✅ Call rejected')
-
-      } catch (error: any) {
-        console.error('❌ Failed to reject call:', error)
-        throw error
-      }
-    },
-
-    async hangup() {
-      if (!this.activeCall) return
-
-      const asteriskStore = useAsteriskStore()
-      const agentStore = useAgentStore()
-      const duration = this.activCallDuration
-
-      try {
-        await asteriskStore.sendCommand('hangup', {
-          channelId: this.activeCall.id,
-        })
-
-        // Add to history
-        this.addToHistory({
-          id: this.activeCall.id,
-          number: this.activeCall.number,
-          callerName: this.activeCall.callerName,
-          direction: this.activeCall.direction,
-          duration,
-          timestamp: this.activeCall.startTime,
-          status: 'completed',
-        })
-
-        this.activeCall = null
-        this.isDialing = false
-
-        // Update agent status back to available
-        agentStore.onCallEnded()
-
-        console.log('✅ Call ended, duration:', duration, 'seconds')
-
-      } catch (error: any) {
-        console.error('❌ Failed to hangup call:', error)
-        throw error
-      }
-    },
-
-    async toggleMute() {
-      if (!this.activeCall) return
-
-      const asteriskStore = useAsteriskStore()
-      const action = this.activeCall.isMuted ? 'unmute' : 'mute'
-
-      try {
-        await asteriskStore.sendCommand(action, {
-          channelId: this.activeCall.id,
-          direction: 'in', // Mute incoming audio (microphone)
-        })
-
-        this.activeCall.isMuted = !this.activeCall.isMuted
-        console.log('✅ Mute toggled:', this.activeCall.isMuted)
-
-      } catch (error: any) {
-        console.error('❌ Failed to toggle mute:', error)
-        throw error
-      }
-    },
-
-    async toggleHold() {
-      if (!this.activeCall) return
-
-      const asteriskStore = useAsteriskStore()
-      const action = this.activeCall.isOnHold ? 'unhold' : 'hold'
-
-      try {
-        await asteriskStore.sendCommand(action, {
-          channelId: this.activeCall.id,
-        })
-
-        this.activeCall.isOnHold = !this.activeCall.isOnHold
-        this.activeCall.status = this.activeCall.isOnHold ? 'hold' : 'active'
-        console.log('✅ Hold toggled:', this.activeCall.isOnHold)
-
-      } catch (error: any) {
-        console.error('❌ Failed to toggle hold:', error)
-        throw error
-      }
-    },
-
-    async transferCall(targetNumber: string) {
-      if (!this.activeCall) return
-
-      const asteriskStore = useAsteriskStore()
-
-      this.activeCall.status = 'transferring'
-
-      try {
-        await asteriskStore.sendCommand('redirect', {
-          channelId: this.activeCall.id,
-          endpoint: `PJSIP/${targetNumber}`,
-        })
-
-        console.log('✅ Call transferred to:', targetNumber)
-
-        // Add to history as transferred
-        this.addToHistory({
-          id: this.activeCall.id,
-          number: this.activeCall.number,
-          callerName: this.activeCall.callerName,
-          direction: this.activeCall.direction,
-          duration: this.activCallDuration,
-          timestamp: this.activeCall.startTime,
-          status: 'completed',
-        })
-
-        this.activeCall = null
-
-      } catch (error: any) {
-        console.error('❌ Failed to transfer call:', error)
-        // Revert status if transfer fails
-        if (this.activeCall) {
-          this.activeCall.status = 'active'
-        }
-        throw error
-      }
-    },
-
     addToHistory(historyItem: CallHistory) {
       this.callHistory.unshift(historyItem)
 
@@ -357,10 +188,9 @@ export const useCallStore = defineStore('call', {
       this.callHistory = []
     },
 
+    // WebSocket event handlers - simple state updates only
     updateCallStatus(callId: string, newState: string) {
       if (this.activeCall?.id === callId) {
-        const agentStore = useAgentStore()
-
         // Map Asterisk channel states to our call statuses
         const statusMap: Record<string, CallStatus> = {
           'Up': 'active',
@@ -377,10 +207,12 @@ export const useCallStore = defineStore('call', {
 
         // Update agent status when call becomes active (for outbound calls)
         if (previousStatus === 'ringing' && mappedStatus === 'active') {
-          agentStore.onCallStarted(callId, this.activeCall.number)
+          const agentStore = useAgentStore()
+          agentStore.setStatus('on_call')
+          console.log('📞 Agent status: on_call')
         }
 
-        // If call went down, end it
+        // Handle call end
         if (newState === 'Down') {
           this.endCall(callId)
         }
@@ -390,8 +222,8 @@ export const useCallStore = defineStore('call', {
     endCall(channelId: string) {
       const agentStore = useAgentStore()
 
-      // Handle call end from WebSocket event
-      if (this.activeCall && this.activeCall.id === channelId) {
+      // Handle active call end
+      if (this.activeCall?.id === channelId) {
         const duration = this.activCallDuration
 
         this.addToHistory({
@@ -408,13 +240,17 @@ export const useCallStore = defineStore('call', {
         this.isDialing = false
 
         // Update agent status back to available
-        agentStore.onCallEnded()
+        if (agentStore.isConnectedToQueue) {
+          agentStore.setStatus('available')
+        } else {
+          agentStore.setStatus('offline')
+        }
 
         console.log('📞 Call ended by remote party, duration:', duration, 'seconds')
       }
 
-      // Also check if it's an incoming call that was hung up
-      if (this.incomingCall && this.incomingCall.id === channelId) {
+      // Handle missed incoming call
+      if (this.incomingCall?.id === channelId) {
         this.addToHistory({
           id: this.incomingCall.id,
           number: this.incomingCall.number,

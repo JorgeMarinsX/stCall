@@ -166,10 +166,17 @@ useHead({
 })
 
 const callStore = useCallStore()
-const toast = useToast()
 
-// Composables are auto-imported by Nuxt
-const { formatDuration } = useCallFormatters()
+// Use call handler for all call operations
+const {
+  startOutboundCall,
+  answerCall,
+  rejectCall,
+  hangup,
+  toggleMute,
+  toggleHold,
+  transferCall,
+} = useCallHandler()
 
 // State
 const phoneNumber = ref('')
@@ -188,137 +195,20 @@ const showIncomingCall = computed({
 // Call duration tracking
 const { callDuration } = useCallDuration(() => activeCall.value)
 
-// Methods
+// Methods - wrapper for startCall with validation and UI updates
 const startCall = async (number?: string) => {
   const numberToCall = number || phoneNumber.value
 
   if (!numberToCall || numberToCall.length < 8) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Número inválido',
-      detail: 'Digite um número válido para iniciar a chamada',
-      life: 3000,
-    })
+    // Note: validation is minimal here; useCallHandler already shows error toasts
     return
   }
 
   try {
-    await callStore.startOutboundCall(numberToCall)
+    await startOutboundCall(numberToCall)
     phoneNumber.value = ''
-
-    toast.add({
-      severity: 'info',
-      summary: 'Discando',
-      detail: `Iniciando chamada para ${numberToCall}...`,
-      life: 2000,
-    })
   } catch (error: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro ao iniciar chamada',
-      detail: error.message || 'Falha ao iniciar chamada',
-      life: 5000,
-    })
-  }
-}
-
-const answerCall = async () => {
-  try {
-    await callStore.answerCall()
-    toast.add({
-      severity: 'success',
-      summary: 'Chamada atendida',
-      detail: 'Você está conectado',
-      life: 2000,
-    })
-  } catch (error: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro ao atender chamada',
-      detail: error.message || 'Falha ao atender chamada',
-      life: 5000,
-    })
-  }
-}
-
-const rejectCall = async () => {
-  try {
-    await callStore.rejectCall()
-    toast.add({
-      severity: 'warn',
-      summary: 'Chamada recusada',
-      detail: 'A chamada foi recusada',
-      life: 2000,
-    })
-  } catch (error: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro ao recusar chamada',
-      detail: error.message || 'Falha ao recusar chamada',
-      life: 5000,
-    })
-  }
-}
-
-const hangup = async () => {
-  if (activeCall.value) {
-    const duration = Math.floor((Date.now() - activeCall.value.startTime.getTime()) / 1000)
-
-    try {
-      await callStore.hangup()
-
-      toast.add({
-        severity: 'info',
-        summary: 'Chamada encerrada',
-        detail: `Duração: ${formatDuration(duration)}`,
-        life: 3000,
-      })
-    } catch (error: any) {
-      toast.add({
-        severity: 'error',
-        summary: 'Erro ao encerrar chamada',
-        detail: error.message || 'Falha ao encerrar chamada',
-        life: 5000,
-      })
-    }
-  }
-}
-
-const toggleMute = async () => {
-  try {
-    await callStore.toggleMute()
-    toast.add({
-      severity: 'info',
-      summary: activeCall.value?.isMuted ? 'Microfone desativado' : 'Microfone ativado',
-      detail: activeCall.value?.isMuted ? 'Você está no mudo' : 'Você está audível',
-      life: 2000,
-    })
-  } catch (error: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro ao alternar mudo',
-      detail: error.message || 'Falha ao alternar microfone',
-      life: 5000,
-    })
-  }
-}
-
-const toggleHold = async () => {
-  try {
-    await callStore.toggleHold()
-    toast.add({
-      severity: 'info',
-      summary: activeCall.value?.isOnHold ? 'Chamada em espera' : 'Chamada retomada',
-      detail: activeCall.value?.isOnHold ? 'O contato está em espera' : 'Chamada ativa',
-      life: 2000,
-    })
-  } catch (error: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro ao alternar espera',
-      detail: error.message || 'Falha ao colocar/retirar de espera',
-      life: 5000,
-    })
+    // Error already handled by useCallHandler
   }
 }
 
@@ -329,32 +219,14 @@ const showTransferDialog = () => {
 
 const confirmTransfer = async () => {
   if (!transferNumber.value || transferNumber.value.length < 8) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Número inválido',
-      detail: 'Digite um número válido para transferir',
-      life: 3000,
-    })
     return
   }
 
   try {
-    await callStore.transferCall(transferNumber.value)
+    await transferCall(transferNumber.value)
     transferDialogVisible.value = false
-
-    toast.add({
-      severity: 'success',
-      summary: 'Transferindo',
-      detail: `Transferindo para ${transferNumber.value}`,
-      life: 3000,
-    })
   } catch (error: any) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro ao transferir chamada',
-      detail: error.message || 'Falha ao transferir chamada',
-      life: 5000,
-    })
+    // Error already handled by useCallHandler
   }
 }
 

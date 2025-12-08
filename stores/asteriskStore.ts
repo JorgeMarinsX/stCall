@@ -225,7 +225,7 @@ export const useAsteriskStore = defineStore('asterisk', {
 
       console.log('📡 Asterisk event:', event.type, event)
 
-      // Route events to appropriate stores
+      // Route events to call store for state updates only
       const callStore = useCallStore()
 
       switch (event.type) {

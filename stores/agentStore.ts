@@ -27,55 +27,13 @@ export const useAgentStore = defineStore('agent', {
   },
 
   actions: {
-    async connectToQueue() {
-      const asteriskStore = useAsteriskStore()
-      const authStore = useAuthStore()
-
-      try {
-        // Register agent to receive calls via WebSocket
-        await asteriskStore.sendCommand('registerAgent', {
-          agentId: authStore.user?.id,
-          extension: authStore.user?.extension,
-        })
-
-        this.isConnectedToQueue = true
-        this.currentAgentStatus = 'available'
-
-        console.log('✅ Agent connected to queue, extension:', authStore.user?.extension)
-
-      } catch (error: any) {
-        console.error('❌ Failed to connect to queue:', error)
-        this.isConnectedToQueue = false
-        this.currentAgentStatus = 'offline'
-        throw error
-      }
+    // Simple state setters - no business logic
+    setConnectedToQueue(connected: boolean) {
+      this.isConnectedToQueue = connected
     },
 
-    async disconnectFromQueue() {
-      const asteriskStore = useAsteriskStore()
-      const authStore = useAuthStore()
-      const callStore = useCallStore()
-
-      try {
-        // Check if there's an active call - warn but allow disconnect
-        if (callStore.hasActiveCall) {
-          console.warn('⚠️ Disconnecting while on active call')
-        }
-
-        // Unregister agent from receiving calls
-        await asteriskStore.sendCommand('unregisterAgent', {
-          agentId: authStore.user?.id,
-        })
-
-        this.isConnectedToQueue = false
-        this.currentAgentStatus = 'offline'
-
-        console.log('✅ Agent disconnected from queue')
-
-      } catch (error: any) {
-        console.error('❌ Failed to disconnect from queue:', error)
-        throw error
-      }
+    setStatus(status: AgentStatus) {
+      this.currentAgentStatus = status
     },
 
     updateAgentStatus(agentId: string, status: AgentStatus, callInfo?: { callId?: string; callNumber?: string }) {
@@ -188,37 +146,6 @@ export const useAgentStore = defineStore('agent', {
 
     updateStats(stats: Partial<AgentStats>) {
       this.stats = { ...this.stats, ...stats }
-    },
-
-    // Handle agent status changes from call events
-    onCallStarted(callId: string, callNumber: string) {
-      // Update current agent status when a call starts
-      this.currentAgentStatus = 'on_call'
-      console.log('📞 Agent status updated to on_call')
-    },
-
-    onCallEnded() {
-      // Update current agent status when a call ends
-      if (this.isConnectedToQueue) {
-        this.currentAgentStatus = 'available'
-      } else {
-        this.currentAgentStatus = 'offline'
-      }
-      console.log('📞 Agent status updated to', this.currentAgentStatus)
-    },
-
-    setUnavailable() {
-      // Allow agent to manually set themselves as unavailable
-      this.currentAgentStatus = 'unavailable'
-      console.log('📞 Agent status set to unavailable')
-    },
-
-    setAvailable() {
-      // Allow agent to manually set themselves as available
-      if (this.isConnectedToQueue) {
-        this.currentAgentStatus = 'available'
-        console.log('📞 Agent status set to available')
-      }
     },
   },
 })
