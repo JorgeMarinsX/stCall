@@ -39,6 +39,10 @@ export const useAsteriskStore = defineStore('asterisk', {
     // Heartbeat management
     heartbeatInterval: null as ReturnType<typeof setInterval> | null,
     lastPongTime: 0,
+
+    // WebRTC state tracking
+    webrtcRegistered: false,
+    webrtcExtension: null as string | null,
   }),
 
   getters: {

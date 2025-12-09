@@ -11,6 +11,7 @@ export interface Call {
   duration: number
   isMuted: boolean
   isOnHold: boolean
+  isWebRTC?: boolean  // Flag to identify WebRTC calls vs ARI calls
 }
 
 export interface CallHistory {

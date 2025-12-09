@@ -1,6 +1,24 @@
 <template>
   <div class="p-6 w-full mx-auto">
-    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Chamadas</h1>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Chamadas</h1>
+
+      <!-- WebRTC Status Indicator -->
+      <div class="flex items-center gap-2">
+        <Tag v-if="webrtcIntegration.isIntegrated.value" severity="success" class="text-xs">
+          <i class="pi pi-check-circle mr-1"></i>
+          WebRTC Conectado
+        </Tag>
+        <Tag v-else-if="webrtcPhone.isRegistered.value" severity="warn" class="text-xs">
+          <i class="pi pi-exclamation-triangle mr-1"></i>
+          WebRTC: Sem ARI
+        </Tag>
+        <Tag v-else severity="contrast" class="text-xs">
+          <i class="pi pi-circle mr-1"></i>
+          WebRTC: Offline
+        </Tag>
+      </div>
+    </div>
 
     <!-- Active Call Display -->
     <Card v-if="callStore.hasActiveCall" class="mb-6">
@@ -155,17 +173,26 @@
         />
       </template>
     </Dialog>
+
+    <!-- WebRTC Audio Player (hidden, plays remote audio) -->
+    <WebRTCAudioPlayer :stream="webrtcPhone.remoteStream.value" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useCallStore } from '~/stores/callStore'
+import { useAuthStore } from '~/stores/authStore'
 
 useHead({
   title: 'stCall - Chamadas',
 })
 
 const callStore = useCallStore()
+const authStore = useAuthStore()
+
+// WebRTC Integration
+const webrtcIntegration = useWebRTCIntegration()
+const webrtcPhone = webrtcIntegration.phone
 
 // Use call handler for all call operations
 const {
@@ -194,6 +221,42 @@ const showIncomingCall = computed({
 
 // Call duration tracking
 const { callDuration } = useCallDuration(() => activeCall.value)
+
+// Register WebRTC on mount
+onMounted(async () => {
+  const config = useRuntimeConfig()
+
+  // Only register if WebRTC is configured
+  if (config.public.webrtcWssUrl && config.public.webrtcDomain) {
+    const extension = authStore.user?.extension
+
+    if (!extension) {
+      console.warn('No extension found for WebRTC registration')
+      return
+    }
+
+    try {
+      // TODO: Implement secure WebRTC credential storage
+      // For now, using extension as both username and password (TEMPORARY)
+      // In production, WebRTC credentials should:
+      // 1. Be returned from login endpoint
+      // 2. Be stored securely (encrypted in localStorage or memory only)
+      // 3. Be separate from user's login password
+      await webrtcPhone.register({
+        wsServer: config.public.webrtcWssUrl,
+        domain: config.public.webrtcDomain,
+        username: extension,
+        password: extension, // TEMPORARY: Replace with actual WebRTC password
+        displayName: authStore.user?.name,
+      })
+    } catch (error) {
+      console.error('Failed to register WebRTC:', error)
+      // Non-blocking: app can still work with ARI-only calling
+    }
+  } else {
+    console.warn('WebRTC not configured. Set WEBRTC_WSS_URL and WEBRTC_DOMAIN in .env')
+  }
+})
 
 // Methods - wrapper for startCall with validation and UI updates
 const startCall = async (number?: string) => {

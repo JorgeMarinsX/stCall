@@ -16,7 +16,15 @@ export default defineNuxtConfig({
       asteriskAriPort: process.env.ASTERISK_ARI_PORT || '8088',
       asteriskWsPort: process.env.ASTERISK_WS_PORT || '8088',
       apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api',
-      wsUrl: process.env.WS_URL || 'ws://localhost:3001'
+      wsUrl: process.env.WS_URL || 'ws://localhost:3001',
+
+      // WebRTC Configuration
+      webrtcWssUrl: process.env.WEBRTC_WSS_URL || '',
+      webrtcDomain: process.env.WEBRTC_DOMAIN || '',
+      webrtcStunServer: process.env.WEBRTC_STUN_SERVER || 'stun:stun.l.google.com:19302',
+      webrtcTurnServer: process.env.WEBRTC_TURN_SERVER || '',
+      webrtcTurnUsername: process.env.WEBRTC_TURN_USERNAME || '',
+      webrtcTurnPassword: process.env.WEBRTC_TURN_PASSWORD || '',
     }
   },
 
