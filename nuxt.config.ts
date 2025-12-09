@@ -2,6 +2,7 @@ import stCallTheme from './theme.config';
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
+  debug: true,
 
   runtimeConfig: {
     // Private keys (server-side only)
@@ -20,7 +21,14 @@ export default defineNuxtConfig({
   },
 
   modules: ['@primevue/nuxt-module', '@nuxt/devtools', '@nuxtjs/tailwindcss', '@pinia/nuxt'],
-  
+
+  // Configure auto-imports to scan composables subdirectories
+  imports: {
+    dirs: [
+      'composables/**'
+    ]
+  },
+
   primevue: {
     options: {
       theme: {

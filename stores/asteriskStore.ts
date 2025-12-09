@@ -2,19 +2,43 @@ import { defineStore } from 'pinia'
 import type { ConnectionStatus, PendingCommand, WebSocketMessage, AsteriskEvent } from '~/types'
 import { globalToast } from '~/utils/toastManager'
 
+/**
+ * Asterisk WebSocket Store
+ *
+ * Manages all WebSocket communication with the stCall WebSocket server.
+ * The server acts as a proxy to Asterisk ARI and provides real-time call events.
+ *
+ * RESPONSIBILITIES:
+ * 1. Connection Management - Connect, disconnect, and reconnect to WebSocket server
+ * 2. Message Handling - Parse and route incoming WebSocket messages
+ * 3. Event Processing - Handle Asterisk ARI events and update call state
+ * 4. Command Execution - Send commands to server and handle responses
+ * 5. Heartbeat - Keep connection alive with periodic ping/pong
+ *
+ * USAGE:
+ * Components should use composables/ws/useWebSocketHandler.ts as the main interface.
+ * This store is primarily for state management, not direct component interaction.
+ */
 export const useAsteriskStore = defineStore('asterisk', {
   state: () => ({
+    // Connection state
     connectionStatus: 'disconnected' as ConnectionStatus,
     websocket: null as WebSocket | null,
     lastError: undefined as string | undefined,
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
-    events: [] as AsteriskEvent[],
     isReconnecting: false,
+    jwtToken: null as string | null,
+
+    // Event history (last 100 events for debugging)
+    events: [] as AsteriskEvent[],
+
+    // Command queue management
     pendingCommands: new Map<string, PendingCommand>(),
+
+    // Heartbeat management
     heartbeatInterval: null as ReturnType<typeof setInterval> | null,
     lastPongTime: 0,
-    jwtToken: null as string | null,
   }),
 
   getters: {
@@ -24,6 +48,15 @@ export const useAsteriskStore = defineStore('asterisk', {
   },
 
   actions: {
+    // ============================================================
+    // CONNECTION MANAGEMENT
+    // ============================================================
+
+    /**
+     * Connect to WebSocket server
+     * Sets up event handlers for onopen, onmessage, onerror, and onclose
+     * @param jwtToken - Authentication token for WebSocket connection
+     */
     async connect(jwtToken: string) {
       if (this.websocket && this.connectionStatus === 'connected') {
         console.warn('WebSocket already connected')
@@ -54,7 +87,7 @@ export const useAsteriskStore = defineStore('asterisk', {
           // Start heartbeat
           this.startHeartbeat()
 
-          // Show appropriate success notification using global toast
+          // Show appropriate success notification
           if (wasReconnecting) {
             globalToast.success(
               'Reconectado',
@@ -84,7 +117,6 @@ export const useAsteriskStore = defineStore('asterisk', {
           this.connectionStatus = 'error'
           this.lastError = 'Erro de conexão com o servidor'
 
-          // Notify user of connection error
           const { handleConnectionError } = useWebSocketErrors()
           handleConnectionError(this.lastError)
         }
@@ -94,10 +126,9 @@ export const useAsteriskStore = defineStore('asterisk', {
           this.connectionStatus = 'disconnected'
           this.websocket = null
 
-          // Stop heartbeat
           this.stopHeartbeat()
 
-          // Check if there was an active call - warn user
+          // Check if there was an active call
           const callStore = useCallStore()
           const hadActiveCall = callStore.hasActiveCall
 
@@ -126,7 +157,6 @@ export const useAsteriskStore = defineStore('asterisk', {
         this.connectionStatus = 'error'
         this.lastError = error.message || 'Falha ao estabelecer conexão'
 
-        // Show error notification using global toast
         globalToast.error(
           'Erro de conexão',
           this.lastError,
@@ -135,6 +165,10 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
     },
 
+    /**
+     * Disconnect from WebSocket server
+     * Cleans up pending commands and stops heartbeat
+     */
     disconnect() {
       if (this.websocket) {
         this.isReconnecting = false
@@ -147,7 +181,7 @@ export const useAsteriskStore = defineStore('asterisk', {
       this.reconnectAttempts = 0
       this.jwtToken = null
 
-      // Reject all pending commands and clear their timeouts to prevent memory leaks
+      // Reject all pending commands and clear timeouts (prevent memory leaks)
       this.pendingCommands.forEach((pending) => {
         if (pending.timeoutId) {
           clearTimeout(pending.timeoutId)
@@ -157,11 +191,14 @@ export const useAsteriskStore = defineStore('asterisk', {
       this.pendingCommands.clear()
     },
 
+    /**
+     * Attempt to reconnect to WebSocket server
+     * Uses exponential backoff strategy (max 30 seconds)
+     */
     async attemptReconnect() {
       if (!this.canReconnect || !this.jwtToken) {
         console.error('Cannot reconnect: max attempts reached or no token')
 
-        // Notify user that reconnection failed
         const { handleReconnectFailure } = useWebSocketErrors()
         handleReconnectFailure()
         return
@@ -170,7 +207,6 @@ export const useAsteriskStore = defineStore('asterisk', {
       this.isReconnecting = true
       this.reconnectAttempts++
 
-      // Notify user about reconnection attempt
       const { handleReconnectAttempt } = useWebSocketErrors()
       handleReconnectAttempt(this.reconnectAttempts, this.maxReconnectAttempts)
 
@@ -184,15 +220,24 @@ export const useAsteriskStore = defineStore('asterisk', {
       }, delay)
     },
 
+    // ============================================================
+    // MESSAGE HANDLING
+    // ============================================================
+
+    /**
+     * Handle incoming WebSocket message
+     * Routes to appropriate handler based on message type
+     * @param message - WebSocket message from server
+     */
     handleMessage(message: WebSocketMessage) {
       switch (message.type) {
         case 'event':
-          // Asterisk ARI event wrapped in data
+          // Asterisk ARI event
           this.handleAsteriskEvent(message.data)
           break
 
         case 'system':
-          // Server notification - display to user
+          // Server notification
           this.handleSystemMessage(message.data)
           break
 
@@ -211,21 +256,27 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
     },
 
+    /**
+     * Handle Asterisk ARI event
+     * Stores event and routes to callStore for state updates
+     * @param event - Asterisk ARI event data
+     */
     handleAsteriskEvent(event: any) {
-      // Store event
+      // Store event in history
       this.events.unshift({
         type: event.type || 'unknown',
         data: event,
         timestamp: new Date(),
       })
 
+      // Keep only last 100 events
       if (this.events.length > 100) {
         this.events.pop()
       }
 
       console.log('📡 Asterisk event:', event.type, event)
 
-      // Route events to call store for state updates only
+      // Route events to call store for state updates
       const callStore = useCallStore()
 
       switch (event.type) {
@@ -255,6 +306,43 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
     },
 
+    /**
+     * Handle system message from server
+     * Displays toast notification to user
+     * @param data - System message data
+     */
+    handleSystemMessage(data: any) {
+      console.log('System message:', data)
+
+      // Map severity from backend to toast methods
+      const severity = data.severity === 'warning' ? 'warn' :
+                       data.severity === 'error' ? 'error' :
+                       data.severity === 'success' ? 'success' : 'info'
+
+      const summary = severity === 'error' ? 'Erro' :
+                     severity === 'warn' ? 'Atenção' : 'Informação'
+
+      const life = severity === 'error' ? 10000 : 5000
+
+      globalToast.add({
+        severity,
+        summary,
+        detail: data.message,
+        life
+      })
+    },
+
+    // ============================================================
+    // COMMAND EXECUTION
+    // ============================================================
+
+    /**
+     * Send command to WebSocket server and wait for response
+     * Uses Promise-based pattern with 10-second timeout
+     * @param action - Command action name (e.g., 'originate', 'answer', 'hangup')
+     * @param params - Command parameters
+     * @returns Promise that resolves with command result
+     */
     sendCommand(action: string, params: any): Promise<any> {
       return new Promise((resolve, reject) => {
         if (!this.isConnected) {
@@ -268,7 +356,7 @@ export const useAsteriskStore = defineStore('asterisk', {
         // Generate unique request ID
         const requestId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
-        // Timeout after 10 seconds (store timeout ID to clear it on success)
+        // Set 10-second timeout
         const timeoutId = setTimeout(() => {
           if (this.pendingCommands.has(requestId)) {
             this.pendingCommands.delete(requestId)
@@ -292,6 +380,11 @@ export const useAsteriskStore = defineStore('asterisk', {
       })
     },
 
+    /**
+     * Handle response to previously sent command
+     * Resolves or rejects the pending promise
+     * @param message - Command response message
+     */
     handleCommandResponse(message: WebSocketMessage) {
       if (!message.requestId) return
 
@@ -311,6 +404,11 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
     },
 
+    /**
+     * Send raw message to WebSocket server
+     * Low-level method used by sendCommand and heartbeat
+     * @param message - WebSocket message to send
+     */
     sendMessage(message: WebSocketMessage) {
       if (this.websocket && this.isConnected) {
         this.websocket.send(JSON.stringify(message))
@@ -319,8 +417,16 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
     },
 
+    // ============================================================
+    // HEARTBEAT (KEEP-ALIVE)
+    // ============================================================
+
+    /**
+     * Start heartbeat interval
+     * Sends ping every 30 seconds to keep connection alive
+     */
     startHeartbeat() {
-      // Stop existing heartbeat
+      // Stop existing heartbeat first
       this.stopHeartbeat()
 
       // Send ping every 30 seconds
@@ -331,6 +437,10 @@ export const useAsteriskStore = defineStore('asterisk', {
       }, 30000)
     },
 
+    /**
+     * Stop heartbeat interval
+     * Called on disconnect or connection close
+     */
     stopHeartbeat() {
       if (this.heartbeatInterval) {
         clearInterval(this.heartbeatInterval)
@@ -338,41 +448,35 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
     },
 
-    handleSystemMessage(data: any) {
-      console.log('System message:', data)
+    // ============================================================
+    // LEGACY METHODS (for backward compatibility)
+    // ============================================================
 
-      // Map severity from backend to our toast methods
-      const severity = data.severity === 'warning' ? 'warn' :
-                       data.severity === 'error' ? 'error' :
-                       data.severity === 'success' ? 'success' : 'info'
-
-      const summary = severity === 'error' ? 'Erro' :
-                     severity === 'warn' ? 'Atenção' : 'Informação'
-
-      const life = severity === 'error' ? 10000 : 5000
-
-      // Show toast notification using global toast manager
-      globalToast.add({
-        severity,
-        summary,
-        detail: data.message,
-        life
-      })
-    },
-
+    /**
+     * Store event in history
+     * @deprecated Use handleAsteriskEvent instead
+     * @param event - Asterisk event to store
+     */
     handleEvent(event: AsteriskEvent) {
-      // Legacy method for compatibility
       this.events.unshift(event)
       if (this.events.length > 100) {
         this.events.pop()
       }
     },
 
+    /**
+     * Send data to WebSocket
+     * @deprecated Use sendMessage or sendCommand instead
+     * @param data - Data to send
+     */
     send(data: any) {
-      // Legacy method for compatibility
       this.sendMessage(data)
     },
 
+    /**
+     * Clear all stored events
+     * Useful for debugging or memory management
+     */
     clearEvents() {
       this.events = []
     },

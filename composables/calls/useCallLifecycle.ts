@@ -18,8 +18,16 @@ export const useCallLifecycle = () => {
     callStore.setIsDialing(true)
 
     try {
+      // First, verify the agent has an extension
+      if (!authStore.user?.extension) {
+        throw new Error('Agent extension not configured')
+      }
+
+      console.log('🔄 Originating call to', number, 'from extension', authStore.user.extension)
+      console.log('Full endpoint:', `PJSIP/${authStore.user.extension}`)
+
       const result = await asteriskStore.sendCommand('originate', {
-        endpoint: `PJSIP/${authStore.user?.extension}`,
+        endpoint: `PJSIP/${authStore.user.extension}`,
         extension: number,
         context: 'from-internal',
         priority: 1,
