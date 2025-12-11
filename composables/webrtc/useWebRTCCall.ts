@@ -10,7 +10,7 @@ import type { Session, InviterOptions } from 'sip.js'
 export const useWebRTCCall = () => {
   const state = useWebRTCState()
   const media = useWebRTCMedia()
-  const { globalToast } = useGlobalToast()
+  const { execute } = useCommandExecutor()
 
   const setupSessionHandlers = (
     session: Session,
@@ -62,37 +62,41 @@ export const useWebRTCCall = () => {
       }
     }
 
-    try {
-      // Create Inviter (outbound session)
-      const inviter = new Inviter(state.userAgent.value as UserAgent, target, inviterOptions)
-      state.currentSession.value = inviter
+    await execute({
+      action: async () => {
+        // Create Inviter (outbound session)
+        const inviter = new Inviter(state.userAgent.value as UserAgent, target, inviterOptions)
+        state.currentSession.value = inviter
 
-      // Setup handlers
-      setupSessionHandlers(inviter, 'outbound', number)
+        // Setup handlers
+        setupSessionHandlers(inviter, 'outbound', number)
 
-      // Create call state
-      state.callState.value = {
-        id: inviter.id,
-        remoteNumber: number,
-        state: 'ringing',
-        direction: 'outbound',
-        startTime: new Date(),
-      }
+        // Create call state
+        state.callState.value = {
+          id: inviter.id,
+          remoteNumber: number,
+          state: 'ringing',
+          direction: 'outbound',
+          startTime: new Date(),
+        }
 
-      // Send INVITE
-      await inviter.invite()
+        // Send INVITE
+        await inviter.invite()
 
-      console.log(`📞 Calling ${number}...`)
-
-      globalToast.info('Ligando', `Chamando ${number}...`, 2000)
-    } catch (error: any) {
-      console.error('Failed to make call:', error)
-      state.currentSession.value = null
-      state.callState.value = null
-
-      globalToast.error('Erro ao ligar', error.message || 'Falha ao iniciar chamada')
-      throw error
-    }
+        return inviter
+      },
+      successMessage: {
+        title: 'Ligando',
+        detail: `Chamando ${number}...`,
+        life: 2000,
+      },
+      errorMessage: 'Erro ao ligar',
+      onError: () => {
+        state.currentSession.value = null
+        state.callState.value = null
+      },
+      logPrefix: `WebRTC:Call:${number}`,
+    })
   }
 
   /**
@@ -103,30 +107,31 @@ export const useWebRTCCall = () => {
       throw new Error('Nenhuma chamada para atender')
     }
 
-    try {
-      const session = state.currentSession.value as any
+    await execute({
+      action: async () => {
+        const session = state.currentSession.value as any
 
-      await session.accept({
-        sessionDescriptionHandlerOptions: {
-          constraints: {
-            audio: true,
-            video: false,
+        await session.accept({
+          sessionDescriptionHandlerOptions: {
+            constraints: {
+              audio: true,
+              video: false,
+            }
           }
+        })
+
+        if (state.callState.value) {
+          state.callState.value.state = 'active'
         }
-      })
-
-      if (state.callState.value) {
-        state.callState.value.state = 'active'
-      }
-
-      console.log('✅ Call answered')
-
-      globalToast.success('Chamada atendida', 'Você está conectado', 2000)
-    } catch (error: any) {
-      console.error('Failed to answer call:', error)
-      globalToast.error('Erro ao atender', error.message || 'Falha ao atender chamada')
-      throw error
-    }
+      },
+      successMessage: {
+        title: 'Chamada atendida',
+        detail: 'Você está conectado',
+        life: 2000,
+      },
+      errorMessage: 'Erro ao atender',
+      logPrefix: 'WebRTC:Answer',
+    })
   }
 
   /**
@@ -137,20 +142,22 @@ export const useWebRTCCall = () => {
       throw new Error('Nenhuma chamada para recusar')
     }
 
-    try {
-      const session = state.currentSession.value as any
-      await session.reject()
+    await execute({
+      action: async () => {
+        const session = state.currentSession.value as any
+        await session.reject()
 
-      state.currentSession.value = null
-      state.callState.value = null
-
-      console.log('❌ Call rejected')
-
-      globalToast.info('Chamada recusada', 'A chamada foi recusada', 2000)
-    } catch (error: any) {
-      console.error('Failed to reject call:', error)
-      throw error
-    }
+        state.currentSession.value = null
+        state.callState.value = null
+      },
+      successMessage: {
+        title: 'Chamada recusada',
+        detail: 'A chamada foi recusada',
+        life: 2000,
+      },
+      errorMessage: 'Erro ao recusar',
+      logPrefix: 'WebRTC:Reject',
+    })
   }
 
   /**
@@ -162,26 +169,31 @@ export const useWebRTCCall = () => {
       return
     }
 
-    try {
-      await state.currentSession.value.bye()
+    await execute({
+      action: async () => {
+        await state.currentSession.value!.bye()
 
-      state.currentSession.value = null
-      if (state.callState.value) {
-        state.callState.value.state = 'ended'
-      }
+        state.currentSession.value = null
+        if (state.callState.value) {
+          state.callState.value.state = 'ended'
+        }
 
-      media.cleanupStreams()
-
-      console.log('✅ Call ended')
-
-      globalToast.info('Chamada encerrada', 'A chamada foi finalizada', 2000)
-    } catch (error: any) {
-      console.error('Failed to hangup:', error)
-      // Still cleanup even if hangup fails
-      state.currentSession.value = null
-      state.callState.value = null
-      media.cleanupStreams()
-    }
+        media.cleanupStreams()
+      },
+      successMessage: {
+        title: 'Chamada encerrada',
+        detail: 'A chamada foi finalizada',
+        life: 2000,
+      },
+      errorMessage: 'Erro ao encerrar',
+      onError: () => {
+        // Still cleanup even if hangup fails
+        state.currentSession.value = null
+        state.callState.value = null
+        media.cleanupStreams()
+      },
+      logPrefix: 'WebRTC:Hangup',
+    })
   }
 
   /**
@@ -193,29 +205,30 @@ export const useWebRTCCall = () => {
       return
     }
 
-    try {
-      const sessionDescriptionHandler = state.currentSession.value.sessionDescriptionHandler as any
+    await execute({
+      action: async () => {
+        const sessionDescriptionHandler = state.currentSession.value!.sessionDescriptionHandler as any
 
-      if (enable) {
-        await sessionDescriptionHandler.hold()
-        if (state.callState.value) {
-          state.callState.value.state = 'held'
+        if (enable) {
+          await sessionDescriptionHandler.hold()
+          if (state.callState.value) {
+            state.callState.value.state = 'held'
+          }
+        } else {
+          await sessionDescriptionHandler.unhold()
+          if (state.callState.value) {
+            state.callState.value.state = 'active'
+          }
         }
-        globalToast.info('Chamada em espera', 'O contato está em espera', 2000)
-      } else {
-        await sessionDescriptionHandler.unhold()
-        if (state.callState.value) {
-          state.callState.value.state = 'active'
-        }
-        globalToast.info('Chamada retomada', 'Chamada ativa', 2000)
-      }
-
-      console.log(`📞 Call ${enable ? 'on hold' : 'resumed'}`)
-    } catch (error: any) {
-      console.error('Failed to toggle hold:', error)
-      globalToast.error('Erro ao alternar espera', error.message)
-      throw error
-    }
+      },
+      successMessage: {
+        title: enable ? 'Chamada em espera' : 'Chamada retomada',
+        detail: enable ? 'O contato está em espera' : 'Chamada ativa',
+        life: 2000,
+      },
+      errorMessage: 'Erro ao alternar espera',
+      logPrefix: `WebRTC:${enable ? 'Hold' : 'Unhold'}`,
+    })
   }
 
   /**

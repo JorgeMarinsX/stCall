@@ -1,26 +1,3 @@
-/**
- * useWebSocketErrors - Centralized error handling composable for WebSocket operations
- *
- * @description
- * Provides standardized error handling and user notifications for WebSocket-related errors.
- * Includes connection errors, command errors, and automatic reconnection feedback.
- *
- * Uses the global toast manager to work both inside and outside component context.
- *
- * @example
- * ```typescript
- * const { handleConnectionError, handleCommandError, handleReconnectAttempt } = useWebSocketErrors()
- *
- * // On connection failure
- * handleConnectionError('Failed to connect to server')
- *
- * // On command failure
- * handleCommandError('originate', 'Channel not found')
- *
- * // On reconnection attempt
- * handleReconnectAttempt(3, 5)
- * ```
- */
 export function useWebSocketErrors() {
   const { globalToast } = useGlobalToast()
 
@@ -36,12 +13,7 @@ export function useWebSocketErrors() {
     )
   }
 
-  /**
-   * Handle command execution errors
-   * Shows error toast with action-specific context
-   */
   const handleCommandError = (action: string, error: string) => {
-    // Map action names to user-friendly Portuguese
     const actionNames: Record<string, string> = {
       'originate': 'Iniciar chamada',
       'answer': 'Atender chamada',
@@ -64,10 +36,6 @@ export function useWebSocketErrors() {
     )
   }
 
-  /**
-   * Handle reconnection attempts
-   * Shows info toast about reconnection progress
-   */
   const handleReconnectAttempt = (attempt: number, maxAttempts: number) => {
     globalToast.info(
       'Reconectando',
@@ -76,10 +44,6 @@ export function useWebSocketErrors() {
     )
   }
 
-  /**
-   * Handle successful reconnection
-   * Shows success toast
-   */
   const handleReconnectSuccess = () => {
     globalToast.success(
       'Reconectado',
@@ -88,22 +52,14 @@ export function useWebSocketErrors() {
     )
   }
 
-  /**
-   * Handle reconnection failure (max attempts reached)
-   * Shows critical error toast with action instructions
-   */
   const handleReconnectFailure = () => {
     globalToast.error(
       'Falha na Reconexão',
       'Não foi possível restabelecer a conexão. Por favor, recarregue a página ou faça login novamente.',
-      0 // Don't auto-dismiss
+      0 
     )
   }
 
-  /**
-   * Handle WebSocket timeout errors
-   * Shows warning toast for slow responses
-   */
   const handleTimeout = (operation: string) => {
     globalToast.warn(
       'Timeout',
@@ -112,15 +68,11 @@ export function useWebSocketErrors() {
     )
   }
 
-  /**
-   * Handle authentication errors
-   * Shows error toast with login suggestion
-   */
   const handleAuthError = () => {
     globalToast.error(
       'Erro de Autenticação',
       'Sua sessão expirou. Por favor, faça login novamente.',
-      0 // Don't auto-dismiss
+      0 
     )
   }
 

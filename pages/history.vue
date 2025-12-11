@@ -1,16 +1,13 @@
 <template>
   <div class="p-6 w-full">
-    <!-- Header -->
     <div class="mb-4">
       <h1 class="text-3xl font-semibold mb-2 w-full">Histórico de Chamadas</h1>
     </div>
 
-  <!-- Filters Card -->
   <div class="flex flex-row h-fit">
     <Card class="h-fit">
       <template #content>
         <div class="grid">
-          <!-- Date Range -->
           <div class="col-12 md:col-4">
             <label for="dateRange" class="block text-sm font-medium mb-2">
               Período
@@ -28,7 +25,6 @@
             />
           </div>
 
-          <!-- Call Type -->
           <div class="col-12 md:col-3">
             <label for="direction" class="block text-sm font-medium mb-2">
               Tipo
@@ -44,7 +40,6 @@
             />
           </div>
 
-          <!-- Status -->
           <div class="col-12 md:col-3">
             <label for="status" class="block text-sm font-medium mb-2">
               Status
@@ -60,7 +55,6 @@
             />
           </div>
 
-          <!-- Search -->
           <div class="col-12 md:col-2">
             <label for="search" class="block text-sm font-medium mb-2">
               Buscar
@@ -77,7 +71,6 @@
           </div>
         </div>
 
-        <!-- Clear Filters Button -->
         <div class="flex justify-content-end mt-3">
           <Button
             label="Limpar filtros"
@@ -89,7 +82,6 @@
         </div>
       </template>
     </Card>
-    <!-- Data Table -->
     <Card class="flex flex-column ml-5 w-full">
       <template #content>
         <DataTable
@@ -103,7 +95,6 @@
           current-page-report-template="Mostrando {first} a {last} de {totalRecords} chamadas"
           class="flex-1 h-fit"
         >
-          <!-- Direction Column -->
           <Column field="direction" header="Tipo" sortable :style="{ width: '80px' }">
             <template #body="{ data }">
               <Avatar
@@ -118,7 +109,6 @@
             </template>
           </Column>
 
-          <!-- Caller Name/Number Column -->
           <Column field="callerName" header="Contato" sortable>
             <template #body="{ data }">
               <div>
@@ -128,7 +118,6 @@
             </template>
           </Column>
 
-          <!-- Status Column -->
           <Column field="status" header="Status" sortable :style="{ width: '140px' }">
             <template #body="{ data }">
               <Tag
@@ -138,14 +127,12 @@
             </template>
           </Column>
 
-          <!-- Duration Column -->
           <Column field="duration" header="Duração" sortable :style="{ width: '100px' }">
             <template #body="{ data }">
               {{ data.duration > 0 ? formatDuration(data.duration) : '-' }}
             </template>
           </Column>
 
-          <!-- Timestamp Column -->
           <Column field="timestamp" header="Data e Hora" sortable :style="{ width: '180px' }">
             <template #body="{ data }">
               <div>
@@ -155,7 +142,6 @@
             </template>
           </Column>
 
-          <!-- Recording Column -->
           <Column header="Gravação" :style="{ width: '120px' }">
             <template #body="{ data }">
               <Button
@@ -174,7 +160,6 @@
     </Card>
 </div>
 
-    <!-- Audio Player Dialog -->
     <Dialog
       v-model:visible="showPlayer"
       :header="`Gravação - ${selectedCall?.callerName || selectedCall?.number}`"
@@ -206,7 +191,6 @@ useHead({
 
 const callStore = useCallStore()
 
-// Filters
 const filters = ref({
   dateRange: null as Date[] | null,
   direction: null as string | null,
@@ -214,7 +198,6 @@ const filters = ref({
   search: '',
 })
 
-// Filter options
 const directionOptions = [
   { label: 'Todos', value: null },
   { label: 'Recebidas', value: 'inbound' },
@@ -228,15 +211,12 @@ const statusOptions = [
   { label: 'Rejeitadas', value: 'rejected' },
 ]
 
-// Audio player
 const showPlayer = ref(false)
 const selectedCall = ref<CallHistory | null>(null)
 
-// Filtered calls
 const filteredCalls = computed(() => {
   let calls = [...callStore.callHistory]
 
-  // Filter by date range
   if (filters.value.dateRange && filters.value.dateRange.length === 2) {
     const [start, end] = filters.value.dateRange
     if (start && end) {
@@ -247,17 +227,14 @@ const filteredCalls = computed(() => {
     }
   }
 
-  // Filter by direction
   if (filters.value.direction) {
     calls = calls.filter(call => call.direction === filters.value.direction)
   }
 
-  // Filter by status
   if (filters.value.status) {
     calls = calls.filter(call => call.status === filters.value.status)
   }
 
-  // Filter by search
   if (filters.value.search) {
     const searchLower = filters.value.search.toLowerCase()
     calls = calls.filter(call =>
@@ -269,7 +246,6 @@ const filteredCalls = computed(() => {
   return calls
 })
 
-// Helper functions
 const formatDuration = (seconds: number): string => {
   if (seconds === 0) return '0:00'
   const mins = Math.floor(seconds / 60)

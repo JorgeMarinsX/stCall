@@ -1,6 +1,5 @@
 <template>
   <div class="p-6 w-full">
-    <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <div>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Gerenciar agentes</h1>
@@ -16,7 +15,6 @@
       />
     </div>
 
-    <!-- Filters and Search -->
     <div class="mb-4 flex gap-3">
       <IconField class="flex-1">
         <InputIcon class="pi pi-search" />
@@ -38,7 +36,6 @@
       />
     </div>
 
-    <!-- Agents Table -->
     <DataTable
       v-model:filters="filters"
       :value="filteredAgents"
@@ -131,7 +128,6 @@
       </Column>
     </DataTable>
 
-    <!-- Create/Edit Agent Dialog -->
     <Dialog
       v-model:visible="dialogVisible"
       :header="isEditMode ? 'Editar agente' : 'Novo agente'"
@@ -211,7 +207,6 @@
       </template>
     </Dialog>
 
-    <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model:visible="deleteDialogVisible"
       header="Confirmar exclusão"
@@ -258,9 +253,8 @@ useHead({
 })
 
 const agentStore = useAgentStore()
-const toast = useToast()
+const { execute } = useCommandExecutor()
 
-// State
 const loading = ref(false)
 const dialogVisible = ref(false)
 const deleteDialogVisible = ref(false)
@@ -286,12 +280,10 @@ const formErrors = ref({
 const agentToDelete = ref<Agent | null>(null)
 const agentToEdit = ref<Agent | null>(null)
 
-// Filter configuration
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 })
 
-// Status options for filter
 const statusOptions = [
   { label: 'Todos os status', value: null },
   { label: 'Disponível', value: 'available' },
@@ -300,13 +292,11 @@ const statusOptions = [
   { label: 'Offline', value: 'offline' },
 ]
 
-// Computed
 const agents = computed(() => agentStore.agents)
 
 const filteredAgents = computed(() => {
   let result = agents.value
 
-  // Apply search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(agent =>
@@ -316,7 +306,6 @@ const filteredAgents = computed(() => {
     )
   }
 
-  // Apply status filter
   if (statusFilter.value) {
     result = result.filter(agent => agent.status === statusFilter.value)
   }
@@ -324,7 +313,6 @@ const filteredAgents = computed(() => {
   return result
 })
 
-// Methods
 const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     available: 'Disponível',
@@ -426,44 +414,34 @@ const saveAgent = async () => {
 
   saving.value = true
 
-  try {
-    if (isEditMode.value && agentToEdit.value) {
-      await agentStore.updateAgent(agentToEdit.value.id, {
-        name: formData.value.name,
-        email: formData.value.email,
-        extension: formData.value.extension || undefined,
-      })
-      toast.add({
-        severity: 'success',
-        summary: 'Sucesso',
-        detail: 'Agente atualizado com sucesso',
-        life: 3000,
-      })
-    } else {
-      await agentStore.createAgent({
-        name: formData.value.name,
-        email: formData.value.email,
-        extension: formData.value.extension || undefined,
-      })
-      toast.add({
-        severity: 'success',
-        summary: 'Sucesso',
-        detail: 'Agente criado com sucesso',
-        life: 3000,
-      })
-    }
+  const isEdit = isEditMode.value && agentToEdit.value
 
-    closeDialog()
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao salvar agente',
-      life: 3000,
-    })
-  } finally {
-    saving.value = false
-  }
+  await execute({
+    action: async () => {
+      if (isEdit) {
+        return await agentStore.updateAgent(agentToEdit.value!.id, {
+          name: formData.value.name,
+          email: formData.value.email,
+          extension: formData.value.extension || undefined,
+        })
+      } else {
+        return await agentStore.createAgent({
+          name: formData.value.name,
+          email: formData.value.email,
+          extension: formData.value.extension || undefined,
+        })
+      }
+    },
+    successMessage: isEdit ? 'Agente atualizado com sucesso' : 'Agente criado com sucesso',
+    errorMessage: 'Erro ao salvar agente',
+    onSuccess: () => {
+      closeDialog()
+    },
+    logPrefix: isEdit ? 'Update Agent' : 'Create Agent',
+    rethrow: false,
+  })
+
+  saving.value = false
 }
 
 const confirmDelete = (agent: Agent) => {
@@ -476,35 +454,32 @@ const deleteAgent = async () => {
 
   deleting.value = true
 
-  try {
-    await agentStore.deleteAgent(agentToDelete.value.id)
-    toast.add({
-      severity: 'success',
-      summary: 'Sucesso',
-      detail: 'Agente excluído com sucesso',
-      life: 3000,
-    })
-    deleteDialogVisible.value = false
-    agentToDelete.value = null
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao excluir agente',
-      life: 3000,
-    })
-  } finally {
-    deleting.value = false
-  }
+  await execute({
+    action: () => agentStore.deleteAgent(agentToDelete.value!.id),
+    successMessage: 'Agente excluído com sucesso',
+    errorMessage: 'Erro ao excluir agente',
+    onSuccess: () => {
+      deleteDialogVisible.value = false
+      agentToDelete.value = null
+    },
+    logPrefix: 'Delete Agent',
+    rethrow: false,
+  })
+
+  deleting.value = false
 }
 
-// Load agents on mount
 onMounted(async () => {
   loading.value = true
-  try {
-    await agentStore.fetchAllAgents()
-  } finally {
-    loading.value = false
-  }
+
+  await execute({
+    action: () => agentStore.fetchAllAgents(),
+    errorMessage: 'Erro ao carregar agentes',
+    showSuccessToast: false,
+    logPrefix: 'Fetch Agents',
+    rethrow: false,
+  })
+
+  loading.value = false
 })
 </script>

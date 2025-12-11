@@ -1,46 +1,25 @@
 import { defineStore } from 'pinia'
-import type { ConnectionStatus, PendingCommand, WebSocketMessage, AsteriskEvent } from '~/types'
-import { globalToast } from '~/utils/toastManager'
+import type { ConnectionStatus, PendingCommand, AsteriskEvent } from '~/types'
 
-/**
- * Asterisk WebSocket Store
- *
- * Manages all WebSocket communication with the stCall WebSocket server.
- * The server acts as a proxy to Asterisk ARI and provides real-time call events.
- *
- * RESPONSIBILITIES:
- * 1. Connection Management - Connect, disconnect, and reconnect to WebSocket server
- * 2. Message Handling - Parse and route incoming WebSocket messages
- * 3. Event Processing - Handle Asterisk ARI events and update call state
- * 4. Command Execution - Send commands to server and handle responses
- * 5. Heartbeat - Keep connection alive with periodic ping/pong
- *
- * USAGE:
- * Components should use composables/ws/useWebSocketHandler.ts as the main interface.
- * This store is primarily for state management, not direct component interaction.
- */
 export const useAsteriskStore = defineStore('asterisk', {
   state: () => ({
-    // Connection state
     connectionStatus: 'disconnected' as ConnectionStatus,
     websocket: null as WebSocket | null,
     lastError: undefined as string | undefined,
+
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
     isReconnecting: false,
+
     jwtToken: null as string | null,
 
-    // Event history (last 100 events for debugging)
     events: [] as AsteriskEvent[],
 
-    // Command queue management
     pendingCommands: new Map<string, PendingCommand>(),
 
-    // Heartbeat management
     heartbeatInterval: null as ReturnType<typeof setInterval> | null,
     lastPongTime: 0,
 
-    // WebRTC state tracking
     webrtcRegistered: false,
     webrtcExtension: null as string | null,
   }),
@@ -52,415 +31,22 @@ export const useAsteriskStore = defineStore('asterisk', {
   },
 
   actions: {
-    // ============================================================
-    // CONNECTION MANAGEMENT
-    // ============================================================
-
-    /**
-     * Connect to WebSocket server
-     * Sets up event handlers for onopen, onmessage, onerror, and onclose
-     * @param jwtToken - Authentication token for WebSocket connection
-     */
+ 
     async connect(jwtToken: string) {
-      if (this.websocket && this.connectionStatus === 'connected') {
-        console.warn('WebSocket already connected')
-        return
-      }
-
-      this.connectionStatus = 'connecting'
-      this.lastError = undefined
-      this.jwtToken = jwtToken
-
-      try {
-        // Get WebSocket URL from runtime config
-        const config = useRuntimeConfig()
-        const wsUrl = `${config.public.wsUrl}/?token=${jwtToken}`
-
-        console.log('Connecting to stCall WebSocket Server:', config.public.wsUrl)
-
-        this.websocket = new WebSocket(wsUrl)
-
-        this.websocket.onopen = () => {
-          console.log('✅ WebSocket connected to stCall server')
-          const wasReconnecting = this.isReconnecting
-
-          this.connectionStatus = 'connected'
-          this.reconnectAttempts = 0
-          this.isReconnecting = false
-
-          // Start heartbeat
-          this.startHeartbeat()
-
-          // Show appropriate success notification
-          if (wasReconnecting) {
-            globalToast.success(
-              'Reconectado',
-              'Conexão restabelecida com sucesso',
-              3000
-            )
-          } else {
-            globalToast.success(
-              'Conectado',
-              'Conexão estabelecida com sucesso',
-              3000
-            )
-          }
-        }
-
-        this.websocket.onmessage = (event) => {
-          try {
-            const message: WebSocketMessage = JSON.parse(event.data)
-            this.handleMessage(message)
-          } catch (error) {
-            console.error('Failed to parse WebSocket message:', error)
-          }
-        }
-
-        this.websocket.onerror = (error) => {
-          console.error('❌ WebSocket error:', error)
-          this.connectionStatus = 'error'
-          this.lastError = 'Erro de conexão com o servidor'
-
-          const { handleConnectionError } = useWebSocketErrors()
-          handleConnectionError(this.lastError)
-        }
-
-        this.websocket.onclose = (event) => {
-          console.log('WebSocket disconnected', event.code, event.reason)
-          this.connectionStatus = 'disconnected'
-          this.websocket = null
-
-          this.stopHeartbeat()
-
-          // Check if there was an active call
-          const callStore = useCallStore()
-          const hadActiveCall = callStore.hasActiveCall
-
-          if (hadActiveCall) {
-            console.warn('Active call lost due to WebSocket disconnection')
-            globalToast.error(
-              'Conexão perdida',
-              'Chamada ativa pode ter sido perdida. Tentando reconectar...',
-              5000
-            )
-          } else {
-            globalToast.warn(
-              'Conexão perdida',
-              'Tentando reconectar...',
-              3000
-            )
-          }
-
-          // Auto-reconnect logic
-          if (this.canReconnect && !this.isReconnecting && this.jwtToken) {
-            this.attemptReconnect()
-          }
-        }
-      } catch (error: any) {
-        console.error('Failed to connect:', error)
-        this.connectionStatus = 'error'
-        this.lastError = error.message || 'Falha ao estabelecer conexão'
-
-        globalToast.error(
-          'Erro de conexão',
-          this.lastError,
-          5000
-        )
-      }
+      const { connect } = useWebSocketConnection()
+      await connect(jwtToken)
     },
 
-    /**
-     * Disconnect from WebSocket server
-     * Cleans up pending commands and stops heartbeat
-     */
     disconnect() {
-      if (this.websocket) {
-        this.isReconnecting = false
-        this.websocket.close()
-        this.websocket = null
-      }
-
-      this.stopHeartbeat()
-      this.connectionStatus = 'disconnected'
-      this.reconnectAttempts = 0
-      this.jwtToken = null
-
-      // Reject all pending commands and clear timeouts (prevent memory leaks)
-      this.pendingCommands.forEach((pending) => {
-        if (pending.timeoutId) {
-          clearTimeout(pending.timeoutId)
-        }
-        pending.reject(new Error('WebSocket disconnected'))
-      })
-      this.pendingCommands.clear()
+      const { disconnect } = useWebSocketConnection()
+      disconnect()
     },
 
-    /**
-     * Attempt to reconnect to WebSocket server
-     * Uses exponential backoff strategy (max 30 seconds)
-     */
-    async attemptReconnect() {
-      if (!this.canReconnect || !this.jwtToken) {
-        console.error('Cannot reconnect: max attempts reached or no token')
-
-        const { handleReconnectFailure } = useWebSocketErrors()
-        handleReconnectFailure()
-        return
-      }
-
-      this.isReconnecting = true
-      this.reconnectAttempts++
-
-      const { handleReconnectAttempt } = useWebSocketErrors()
-      handleReconnectAttempt(this.reconnectAttempts, this.maxReconnectAttempts)
-
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
-      console.log(`Attempting reconnection in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-
-      setTimeout(() => {
-        if (this.jwtToken) {
-          this.connect(this.jwtToken)
-        }
-      }, delay)
-    },
-
-    // ============================================================
-    // MESSAGE HANDLING
-    // ============================================================
-
-    /**
-     * Handle incoming WebSocket message
-     * Routes to appropriate handler based on message type
-     * @param message - WebSocket message from server
-     */
-    handleMessage(message: WebSocketMessage) {
-      switch (message.type) {
-        case 'event':
-          // Asterisk ARI event
-          this.handleAsteriskEvent(message.data)
-          break
-
-        case 'system':
-          // Server notification
-          this.handleSystemMessage(message.data)
-          break
-
-        case 'pong':
-          // Heartbeat response
-          this.lastPongTime = Date.now()
-          break
-
-        case 'command_response':
-          // Response to command we sent
-          this.handleCommandResponse(message)
-          break
-
-        default:
-          console.warn('Unknown message type:', message.type)
-      }
-    },
-
-    /**
-     * Handle Asterisk ARI event
-     * Stores event and routes to callStore for state updates
-     * @param event - Asterisk ARI event data
-     */
-    handleAsteriskEvent(event: any) {
-      // Store event in history
-      this.events.unshift({
-        type: event.type || 'unknown',
-        data: event,
-        timestamp: new Date(),
-      })
-
-      // Keep only last 100 events
-      if (this.events.length > 100) {
-        this.events.pop()
-      }
-
-      console.log('📡 Asterisk event:', event.type, event)
-
-      // Route events to call store for state updates
-      const callStore = useCallStore()
-
-      switch (event.type) {
-        case 'StasisStart':
-          // New call entering application
-          callStore.receiveIncomingCall({
-            number: event.channel.caller.number,
-            callerName: event.channel.caller.name,
-            callId: event.channel.id
-          })
-          break
-
-        case 'ChannelStateChange':
-          // Call state changed (Ring → Up, etc.)
-          callStore.updateCallStatus(event.channel.id, event.channel.state)
-          break
-
-        case 'ChannelHangupRequest':
-        case 'StasisEnd':
-          // Call ended
-          callStore.endCall(event.channel.id)
-          break
-
-        default:
-          // Log unknown events for debugging
-          console.log('Unhandled event type:', event.type)
-      }
-    },
-
-    /**
-     * Handle system message from server
-     * Displays toast notification to user
-     * @param data - System message data
-     */
-    handleSystemMessage(data: any) {
-      console.log('System message:', data)
-
-      // Map severity from backend to toast methods
-      const severity = data.severity === 'warning' ? 'warn' :
-                       data.severity === 'error' ? 'error' :
-                       data.severity === 'success' ? 'success' : 'info'
-
-      const summary = severity === 'error' ? 'Erro' :
-                     severity === 'warn' ? 'Atenção' : 'Informação'
-
-      const life = severity === 'error' ? 10000 : 5000
-
-      globalToast.add({
-        severity,
-        summary,
-        detail: data.message,
-        life
-      })
-    },
-
-    // ============================================================
-    // COMMAND EXECUTION
-    // ============================================================
-
-    /**
-     * Send command to WebSocket server and wait for response
-     * Uses Promise-based pattern with 10-second timeout
-     * @param action - Command action name (e.g., 'originate', 'answer', 'hangup')
-     * @param params - Command parameters
-     * @returns Promise that resolves with command result
-     */
     sendCommand(action: string, params: any): Promise<any> {
-      return new Promise((resolve, reject) => {
-        if (!this.isConnected) {
-          const error = new Error('WebSocket não conectado')
-          const { handleConnectionError } = useWebSocketErrors()
-          handleConnectionError('Não foi possível executar o comando: WebSocket desconectado')
-          reject(error)
-          return
-        }
-
-        // Generate unique request ID
-        const requestId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
-
-        // Set 10-second timeout
-        const timeoutId = setTimeout(() => {
-          if (this.pendingCommands.has(requestId)) {
-            this.pendingCommands.delete(requestId)
-            const { handleTimeout } = useWebSocketErrors()
-            handleTimeout(action)
-            reject(new Error('Comando expirou (timeout)'))
-          }
-        }, 10000)
-
-        // Store pending request with timeout ID
-        this.pendingCommands.set(requestId, { resolve, reject, timeoutId })
-
-        // Send command
-        const message: WebSocketMessage = {
-          type: 'command',
-          requestId,
-          data: { action, params }
-        }
-
-        this.sendMessage(message)
-      })
+      const { sendCommand } = useWebSocketCommands()
+      return sendCommand(action, params)
     },
 
-    /**
-     * Handle response to previously sent command
-     * Resolves or rejects the pending promise
-     * @param message - Command response message
-     */
-    handleCommandResponse(message: WebSocketMessage) {
-      if (!message.requestId) return
-
-      const pending = this.pendingCommands.get(message.requestId)
-      if (pending) {
-        // Clear timeout to prevent memory leak
-        if (pending.timeoutId) {
-          clearTimeout(pending.timeoutId)
-        }
-
-        if (message.data?.success) {
-          pending.resolve(message.data.result)
-        } else {
-          pending.reject(new Error(message.data?.error || 'Comando falhou'))
-        }
-        this.pendingCommands.delete(message.requestId)
-      }
-    },
-
-    /**
-     * Send raw message to WebSocket server
-     * Low-level method used by sendCommand and heartbeat
-     * @param message - WebSocket message to send
-     */
-    sendMessage(message: WebSocketMessage) {
-      if (this.websocket && this.isConnected) {
-        this.websocket.send(JSON.stringify(message))
-      } else {
-        console.error('Cannot send message: WebSocket not connected')
-      }
-    },
-
-    // ============================================================
-    // HEARTBEAT (KEEP-ALIVE)
-    // ============================================================
-
-    /**
-     * Start heartbeat interval
-     * Sends ping every 30 seconds to keep connection alive
-     */
-    startHeartbeat() {
-      // Stop existing heartbeat first
-      this.stopHeartbeat()
-
-      // Send ping every 30 seconds
-      this.heartbeatInterval = setInterval(() => {
-        if (this.isConnected) {
-          this.sendMessage({ type: 'ping' })
-        }
-      }, 30000)
-    },
-
-    /**
-     * Stop heartbeat interval
-     * Called on disconnect or connection close
-     */
-    stopHeartbeat() {
-      if (this.heartbeatInterval) {
-        clearInterval(this.heartbeatInterval)
-        this.heartbeatInterval = null
-      }
-    },
-
-    // ============================================================
-    // LEGACY METHODS (for backward compatibility)
-    // ============================================================
-
-    /**
-     * Store event in history
-     * @deprecated Use handleAsteriskEvent instead
-     * @param event - Asterisk event to store
-     */
     handleEvent(event: AsteriskEvent) {
       this.events.unshift(event)
       if (this.events.length > 100) {
@@ -468,21 +54,25 @@ export const useAsteriskStore = defineStore('asterisk', {
       }
     },
 
-    /**
-     * Send data to WebSocket
-     * @deprecated Use sendMessage or sendCommand instead
-     * @param data - Data to send
-     */
     send(data: any) {
-      this.sendMessage(data)
+      if (this.websocket && this.isConnected) {
+        this.websocket.send(JSON.stringify(data))
+      }
     },
 
-    /**
-     * Clear all stored events
-     * Useful for debugging or memory management
-     */
     clearEvents() {
       this.events = []
+    },
+
+    setWebRTCRegistered(extension: string) {
+      this.webrtcRegistered = true
+      this.webrtcExtension = extension
+      console.log(`✅ WebRTC registered for extension ${extension}`)
+    },
+
+    clearWebRTCRegistration() {
+      this.webrtcRegistered = false
+      this.webrtcExtension = null
     },
   },
 })

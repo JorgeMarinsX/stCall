@@ -558,6 +558,7 @@ useHead({
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 const toast = useToast()
+const { execute } = useCommandExecutor()
 
 // State
 const compactMode = ref(false)
@@ -742,26 +743,21 @@ const testAsteriskConnection = async () => {
 const saveSystemSettings = async () => {
   savingSystemSettings.value = true
 
-  try {
-    // TODO: Save system settings to backend
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    toast.add({
-      severity: 'success',
-      summary: 'Configurações salvas',
+  await execute({
+    action: async () => {
+      // TODO: Save system settings to backend
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    },
+    successMessage: {
+      title: 'Configurações salvas',
       detail: 'Configurações do sistema foram atualizadas',
-      life: 3000,
-    })
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao salvar configurações do sistema',
-      life: 3000,
-    })
-  } finally {
-    savingSystemSettings.value = false
-  }
+    },
+    errorMessage: 'Erro ao salvar configurações do sistema',
+    logPrefix: 'Save System Settings',
+    rethrow: false,
+  })
+
+  savingSystemSettings.value = false
 }
 
 // Load audio devices on mount

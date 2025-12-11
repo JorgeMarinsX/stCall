@@ -109,7 +109,6 @@ useHead({
 const authStore = useAuthStore()
 const callStore = useCallStore()
 
-// Helper function to format duration in seconds to MM:SS
 const formatDuration = (seconds: number): string => {
   if (seconds === 0) return '0:00'
   const mins = Math.floor(seconds / 60)
@@ -117,7 +116,6 @@ const formatDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-// Helper function to format date
 const formatDate = (date: Date): string => {
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit',

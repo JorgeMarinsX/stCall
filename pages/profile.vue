@@ -383,6 +383,7 @@ const authStore = useAuthStore()
 const agentStore = useAgentStore()
 const toast = useToast()
 const router = useRouter()
+const { execute } = useCommandExecutor()
 
 // Refs
 const avatarFileInput = ref<HTMLInputElement>()
@@ -533,33 +534,26 @@ const saveProfile = async () => {
 
   savingProfile.value = true
 
-  try {
-    // TODO: Update profile via API
-    await new Promise(resolve => setTimeout(resolve, 1000))
+  await execute({
+    action: async () => {
+      // TODO: Update profile via API
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
-    if (user.value) {
-      user.value.name = profileForm.value.name
-      user.value.email = profileForm.value.email
-    }
+      if (user.value) {
+        user.value.name = profileForm.value.name
+        user.value.email = profileForm.value.email
+      }
+    },
+    successMessage: 'Perfil atualizado com sucesso',
+    errorMessage: 'Erro ao atualizar perfil',
+    onSuccess: () => {
+      isEditingProfile.value = false
+    },
+    logPrefix: 'Update Profile',
+    rethrow: false,
+  })
 
-    toast.add({
-      severity: 'success',
-      summary: 'Sucesso',
-      detail: 'Perfil atualizado com sucesso',
-      life: 3000,
-    })
-
-    isEditingProfile.value = false
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao atualizar perfil',
-      life: 3000,
-    })
-  } finally {
-    savingProfile.value = false
-  }
+  savingProfile.value = false
 }
 
 const validatePassword = () => {
@@ -601,33 +595,26 @@ const changePassword = async () => {
 
   savingPassword.value = true
 
-  try {
-    // TODO: Change password via API
-    await new Promise(resolve => setTimeout(resolve, 1000))
+  await execute({
+    action: async () => {
+      // TODO: Change password via API
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    },
+    successMessage: 'Senha alterada com sucesso',
+    errorMessage: 'Erro ao alterar senha. Verifique sua senha atual.',
+    onSuccess: () => {
+      // Clear form
+      passwordForm.value = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }
+    },
+    logPrefix: 'Change Password',
+    rethrow: false,
+  })
 
-    toast.add({
-      severity: 'success',
-      summary: 'Sucesso',
-      detail: 'Senha alterada com sucesso',
-      life: 3000,
-    })
-
-    // Clear form
-    passwordForm.value = {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    }
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao alterar senha. Verifique sua senha atual.',
-      life: 3000,
-    })
-  } finally {
-    savingPassword.value = false
-  }
+  savingPassword.value = false
 }
 
 const confirmDeactivate = () => {
@@ -637,31 +624,27 @@ const confirmDeactivate = () => {
 const deactivateAccount = async () => {
   deactivating.value = true
 
-  try {
-    // TODO: Deactivate account via API
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    toast.add({
-      severity: 'warn',
-      summary: 'Conta desativada',
+  await execute({
+    action: async () => {
+      // TODO: Deactivate account via API
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    },
+    successMessage: {
+      title: 'Conta desativada',
       detail: 'Sua conta foi desativada com sucesso',
-      life: 3000,
-    })
+    },
+    errorMessage: 'Erro ao desativar conta',
+    onSuccess: async () => {
+      // Logout and redirect
+      await authStore.logout()
+      router.push('/login')
+    },
+    logPrefix: 'Deactivate Account',
+    rethrow: false,
+  })
 
-    // Logout and redirect
-    await authStore.logout()
-    router.push('/login')
-  } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Erro ao desativar conta',
-      life: 3000,
-    })
-  } finally {
-    deactivating.value = false
-    deactivateDialogVisible.value = false
-  }
+  deactivating.value = false
+  deactivateDialogVisible.value = false
 }
 
 // Load stats on mount

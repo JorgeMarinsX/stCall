@@ -11,18 +11,9 @@ bun.lock
 .env.local
 .env.*.local
 
-
 # Docs
-instructions.md
-roadmap.md
-websockets.md
-quickstart.md
-ASTERISK_FIX.md
-docs-backend.md
-INTEGRATION-PLAN.md
-architecture.md
-ERROR-HANDLING-SUMMARY.md
-
+*.md
+!README.md 
 
 # AI-Generated diagnostics
 diagnostics/

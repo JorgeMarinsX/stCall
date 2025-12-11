@@ -45,6 +45,23 @@
         </div>
       </template>
       <template #content>
+        <!-- Error Message Banner -->
+        <Message
+          v-if="lastCallError"
+          severity="error"
+          :closable="true"
+          @close="lastCallError = null"
+          class="mb-4"
+        >
+          <div class="flex items-start gap-3">
+            <i class="pi pi-exclamation-circle text-xl"></i>
+            <div class="flex-1">
+              <div class="font-semibold mb-1">Falha ao iniciar chamada</div>
+              <div class="text-sm">{{ lastCallError }}</div>
+            </div>
+          </div>
+        </Message>
+
         <!-- Message when dialing is in progress -->
         <div v-if="callStore.isDialing" class="max-w-md mx-auto py-8 text-center">
           <ProgressSpinner
@@ -189,6 +206,7 @@ useHead({
 
 const callStore = useCallStore()
 const authStore = useAuthStore()
+const { execute } = useCommandExecutor()
 
 // WebRTC Integration
 const webrtcIntegration = useWebRTCIntegration()
@@ -209,6 +227,7 @@ const {
 const phoneNumber = ref('')
 const transferNumber = ref('')
 const transferDialogVisible = ref(false)
+const lastCallError = ref<string | null>(null)
 
 // Computed
 const activeCall = computed(() => callStore.activeCall)
@@ -235,24 +254,25 @@ onMounted(async () => {
       return
     }
 
-    try {
-      // TODO: Implement secure WebRTC credential storage
-      // For now, using extension as both username and password (TEMPORARY)
-      // In production, WebRTC credentials should:
-      // 1. Be returned from login endpoint
-      // 2. Be stored securely (encrypted in localStorage or memory only)
-      // 3. Be separate from user's login password
-      await webrtcPhone.register({
+    // TODO: Implement secure WebRTC credential storage
+    // For now, using extension as both username and password (TEMPORARY)
+    // In production, WebRTC credentials should:
+    // 1. Be returned from login endpoint
+    // 2. Be stored securely (encrypted in localStorage or memory only)
+    // 3. Be separate from user's login password
+    await execute({
+      action: () => webrtcPhone.register({
         wsServer: config.public.webrtcWssUrl,
         domain: config.public.webrtcDomain,
         username: extension,
         password: extension, // TEMPORARY: Replace with actual WebRTC password
         displayName: authStore.user?.name,
-      })
-    } catch (error) {
-      console.error('Failed to register WebRTC:', error)
-      // Non-blocking: app can still work with ARI-only calling
-    }
+      }),
+      showSuccessToast: false,
+      showErrorToast: false, // Non-blocking: app can still work with ARI-only calling
+      logPrefix: 'WebRTC Register',
+      rethrow: false,
+    })
   } else {
     console.warn('WebRTC not configured. Set WEBRTC_WSS_URL and WEBRTC_DOMAIN in .env')
   }
@@ -267,12 +287,28 @@ const startCall = async (number?: string) => {
     return
   }
 
-  try {
-    await startOutboundCall(numberToCall)
-    phoneNumber.value = ''
-  } catch (error: any) {
-    // Error already handled by useCallHandler
-  }
+  // Clear previous error
+  lastCallError.value = null
+
+  await execute({
+    action: () => startOutboundCall(numberToCall),
+    showSuccessToast: false, // useCallHandler already shows toast
+    showErrorToast: false, // useCallHandler already shows toast
+    onSuccess: () => {
+      phoneNumber.value = ''
+    },
+    onError: (error) => {
+      // Capture error for visual display
+      lastCallError.value = error.message || 'Falha ao iniciar chamada'
+
+      // Auto-clear error after 10 seconds
+      setTimeout(() => {
+        lastCallError.value = null
+      }, 10000)
+    },
+    logPrefix: 'Start Call',
+    rethrow: false,
+  })
 }
 
 const showTransferDialog = () => {
@@ -285,12 +321,15 @@ const confirmTransfer = async () => {
     return
   }
 
-  try {
-    await transferCall(transferNumber.value)
-    transferDialogVisible.value = false
-  } catch (error: any) {
-    // Error already handled by useCallHandler
-  }
+  // Use execute for consistent error logging, dialog closes only on success
+  await execute({
+    action: () => transferCall(transferNumber.value),
+    showSuccessToast: false, // useCallHandler shows toast
+    showErrorToast: false, // useCallHandler shows toast
+    onSuccess: () => { transferDialogVisible.value = false },
+    logPrefix: 'Transfer',
+    rethrow: false,
+  })
 }
 
 

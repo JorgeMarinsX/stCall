@@ -66,6 +66,7 @@ definePageMeta({
 const authStore = useAuthStore()
 const router = useRouter()
 const toast = useToast()
+const { execute } = useCommandExecutor()
 
 const email = ref('')
 const password = ref('')
@@ -85,38 +86,29 @@ async function onSubmit() {
 
   loading.value = true
 
-  try {
-    const success = await authStore.login(email.value, password.value)
+  const success = await execute({
+    action: () => authStore.login(email.value, password.value),
+    successMessage: {
+      title: 'Login realizado',
+      detail: `Bem-vindo, ${authStore.userName}!`,
+    },
+    errorMessage: 'Falha ao conectar ao servidor',
+    onSuccess: (loginSuccess) => {
+      if (loginSuccess) {
+        router.push('/')
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: 'Erro de autenticação',
+          detail: authStore.lastError || 'Email ou senha inválidos',
+          life: 5000
+        })
+      }
+    },
+    logPrefix: 'Login',
+    rethrow: false,
+  })
 
-    if (success) {
-      toast.add({
-        severity: 'success',
-        summary: 'Login realizado',
-        detail: `Bem-vindo, ${authStore.userName}!`,
-        life: 3000
-      })
-
-      // Redirect to dashboard
-      router.push('/')
-    } else {
-      // Show error from authStore
-      toast.add({
-        severity: 'error',
-        summary: 'Erro de autenticação',
-        detail: authStore.lastError || 'Email ou senha inválidos',
-        life: 5000
-      })
-    }
-  } catch (error: any) {
-    console.error('Login error:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Erro',
-      detail: 'Falha ao conectar ao servidor',
-      life: 5000
-    })
-  } finally {
-    loading.value = false
-  }
+  loading.value = false
 }
 </script>
