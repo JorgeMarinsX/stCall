@@ -157,7 +157,6 @@ export const useCallStore = defineStore('call', {
       }
     },
 
-    // Event handlers - called by WebSocket events (not business logic)
     receiveIncomingCall(callData: { number: string; callerName?: string; callId: string }) {
       const call: Call = {
         id: callData.callId,
@@ -178,7 +177,6 @@ export const useCallStore = defineStore('call', {
     addToHistory(historyItem: CallHistory) {
       this.callHistory.unshift(historyItem)
 
-      // Keep last 1000 calls
       if (this.callHistory.length > 1000) {
         this.callHistory = this.callHistory.slice(0, 1000)
       }
@@ -188,10 +186,8 @@ export const useCallStore = defineStore('call', {
       this.callHistory = []
     },
 
-    // WebSocket event handlers - simple state updates only
     updateCallStatus(callId: string, newState: string) {
       if (this.activeCall?.id === callId) {
-        // Map Asterisk channel states to our call statuses
         const statusMap: Record<string, CallStatus> = {
           'Up': 'active',
           'Ring': 'ringing',
@@ -205,14 +201,12 @@ export const useCallStore = defineStore('call', {
 
         console.log(`📞 Call status updated: ${callId} -> ${newState} (mapped to ${mappedStatus})`)
 
-        // Update agent status when call becomes active (for outbound calls)
         if (previousStatus === 'ringing' && mappedStatus === 'active') {
           const agentStore = useAgentStore()
           agentStore.setStatus('on_call')
           console.log('📞 Agent status: on_call')
         }
 
-        // Handle call end
         if (newState === 'Down') {
           this.endCall(callId)
         }
@@ -239,7 +233,6 @@ export const useCallStore = defineStore('call', {
         this.activeCall = null
         this.isDialing = false
 
-        // Update agent status back to available
         if (agentStore.isConnectedToQueue) {
           agentStore.setStatus('available')
         } else {
@@ -249,7 +242,6 @@ export const useCallStore = defineStore('call', {
         console.log('📞 Call ended by remote party, duration:', duration, 'seconds')
       }
 
-      // Handle missed incoming call
       if (this.incomingCall?.id === channelId) {
         this.addToHistory({
           id: this.incomingCall.id,

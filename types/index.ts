@@ -1,4 +1,3 @@
-// Re-export all types from stores for easy importing
 export type {
   User,
   LoginResponse

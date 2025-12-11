@@ -31,7 +31,6 @@ export const useAgentConnection = () => {
     )
   }
 
-
   const disconnectFromQueue = async (): Promise<void> => {
     if (callStore.hasActiveCall) {
       console.warn('⚠️ Disconnecting while on active call')

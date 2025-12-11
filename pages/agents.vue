@@ -408,9 +408,7 @@ const validateForm = () => {
 }
 
 const saveAgent = async () => {
-  if (!validateForm()) {
-    return
-  }
+  if (!validateForm()) return
 
   saving.value = true
 

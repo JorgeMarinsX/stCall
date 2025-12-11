@@ -1,7 +1,3 @@
-/**
- * Composable for handling in-call controls
- * Manages mute, hold, and transfer operations during active calls
- */
 export const useCallControls = () => {
   const callStore = useCallStore()
   const { executeAsteriskCommand } = useCommandExecutor()

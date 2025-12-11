@@ -1,11 +1,3 @@
-/**
- * WebRTC Integration with ARI
- * Bridges WebRTC call state with Asterisk ARI events
- * Ensures both systems stay in sync
- *
- * RESPONSIBILITY: Sync WebRTC state ↔ CallStore ↔ ARI Events
- */
-
 export const useWebRTCIntegration = () => {
   const phone = useWebRTCPhone()
   const callStore = useCallStore()
@@ -44,20 +36,15 @@ export const useWebRTCIntegration = () => {
     }
   })
 
-  /**
-   * Watch for ARI events that affect WebRTC calls
-   * Example: Remote party hangs up through ARI
-   */
+
   watch(() => asteriskStore.events, (events) => {
     if (!events.length || !phone.callState.value) return
 
     const latestEvent = events[0]
 
-    // Remote hangup
     if (latestEvent.type === 'ChannelHangupRequest' || latestEvent.type === 'StasisEnd') {
       const channelId = latestEvent.data?.channel?.id
 
-      // Check if this event is for our WebRTC call
       if (channelId && phone.callState.value?.id === channelId) {
         console.log('📞 Remote party hung up (ARI event), ending WebRTC call')
         phone.hangup()
@@ -72,7 +59,6 @@ export const useWebRTCIntegration = () => {
       const extension = authStore.user?.extension
 
       if (extension) {
-        // Update asteriskStore to track WebRTC registration
         asteriskStore.webrtcRegistered = isRegistered
         asteriskStore.webrtcExtension = extension
         console.log(`✅ Asterisk store notified: WebRTC registered for ${extension}`)

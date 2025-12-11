@@ -1,12 +1,6 @@
 import { Inviter, SessionState, UserAgent, URI } from 'sip.js'
 import type { Session, InviterOptions } from 'sip.js'
 
-/**
- * WebRTC Call Operations
- * Handles making calls, answering, rejecting, hanging up, and hold
- * RESPONSIBILITY: Call lifecycle and call control operations
- */
-
 export const useWebRTCCall = () => {
   const state = useWebRTCState()
   const media = useWebRTCMedia()
@@ -43,9 +37,6 @@ export const useWebRTCCall = () => {
     })
   }
 
-  /**
-   * Make an outbound call
-   */
   const call = async (number: string): Promise<void> => {
     if (!state.userAgent.value || !state.isRegistered.value) {
       throw new Error('WebRTC não registrado. Conecte-se primeiro.')
@@ -64,11 +55,9 @@ export const useWebRTCCall = () => {
 
     await execute({
       action: async () => {
-        // Create Inviter (outbound session)
         const inviter = new Inviter(state.userAgent.value as UserAgent, target, inviterOptions)
         state.currentSession.value = inviter
 
-        // Setup handlers
         setupSessionHandlers(inviter, 'outbound', number)
 
         // Create call state
@@ -80,7 +69,6 @@ export const useWebRTCCall = () => {
           startTime: new Date(),
         }
 
-        // Send INVITE
         await inviter.invite()
 
         return inviter
@@ -187,7 +175,6 @@ export const useWebRTCCall = () => {
       },
       errorMessage: 'Erro ao encerrar',
       onError: () => {
-        // Still cleanup even if hangup fails
         state.currentSession.value = null
         state.callState.value = null
         media.cleanupStreams()

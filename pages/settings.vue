@@ -3,7 +3,6 @@
     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Configurações</h1>
 
     <TabView>
-      <!-- Appearance Tab -->
       <TabPanel value="0">
         <template #header>
           <div class="flex items-center gap-2">
@@ -13,7 +12,6 @@
         </template>
 
         <div class="space-y-6">
-          <!-- Dark Mode -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -33,8 +31,6 @@
               </div>
             </template>
           </Card>
-
-          <!-- Theme -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -61,8 +57,6 @@
               </div>
             </template>
           </Card>
-
-          <!-- Compact Mode -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -86,8 +80,6 @@
           </Card>
         </div>
       </TabPanel>
-
-      <!-- Audio Tab -->
       <TabPanel value="1">
         <template #header>
           <div class="flex items-center gap-2">
@@ -97,7 +89,6 @@
         </template>
 
         <div class="space-y-6">
-          <!-- Microphone -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -145,8 +136,6 @@
               </div>
             </template>
           </Card>
-
-          <!-- Speaker -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -193,8 +182,6 @@
               </div>
             </template>
           </Card>
-
-          <!-- Ringtone -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -246,8 +233,6 @@
           </Card>
         </div>
       </TabPanel>
-
-      <!-- Notifications Tab -->
       <TabPanel value="2">
         <template #header>
           <div class="flex items-center gap-2">
@@ -257,7 +242,6 @@
         </template>
 
         <div class="space-y-6">
-          <!-- Call Notifications -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -315,8 +299,6 @@
               </div>
             </template>
           </Card>
-
-          <!-- System Notifications -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -355,8 +337,6 @@
           </Card>
         </div>
       </TabPanel>
-
-      <!-- System Tab (Admin Only) -->
       <TabPanel v-if="authStore.isAdmin" value="3">
         <template #header>
           <div class="flex items-center gap-2">
@@ -366,7 +346,6 @@
         </template>
 
         <div class="space-y-6">
-          <!-- Asterisk Connection -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -431,7 +410,6 @@
             </template>
           </Card>
 
-          <!-- Call Settings -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -491,7 +469,6 @@
             </template>
           </Card>
 
-          <!-- Storage & Maintenance -->
           <Card>
             <template #title>
               <div class="flex items-center gap-2">

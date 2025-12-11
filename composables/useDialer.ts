@@ -1,10 +1,5 @@
 import type { Ref } from 'vue';
 
-/**
- * Composable for handling dialer logic
- * Manages phone number input, validation, keyboard handling, and digit pad interaction
- */
-
 // Valid phone characters regex
 const VALID_CHARS = /[0-9*#+\-() ]/;
 
@@ -43,7 +38,6 @@ export const useDialer = (options: UseDialerOptions) => {
 
   const addDigit = (digit: string) => {
     phoneNumber.value += digit;
-    // Auto-focus input after clicking button
     inputRef.value?.focus();
   };
 
@@ -94,21 +88,16 @@ export const useDialer = (options: UseDialerOptions) => {
       }, 150);
     }
 
-    // Handle Enter key
     if (event.key === 'Enter' || event.key === 'NumpadEnter') {
       onCall?.();
     }
 
-    // Handle Backspace
     if (event.key === 'Backspace' && phoneNumber.value) {
       event.preventDefault();
       phoneNumber.value = phoneNumber.value.slice(0, -1);
     }
   };
 
-  /**
-   * Auto-focus input on mount
-   */
   const focusInput = () => {
     setTimeout(() => {
       inputRef.value?.focus();
@@ -121,15 +110,12 @@ export const useDialer = (options: UseDialerOptions) => {
   };
 
   return {
-    // State
     buttonRefs,
     pressedKey,
 
-    // Constants (exposed for reference if needed)
     VALID_CHARS,
     KEY_MAP,
 
-    // Methods
     setButtonRef,
     addDigit,
     clearPhoneNumber,

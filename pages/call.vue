@@ -3,7 +3,6 @@
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Chamadas</h1>
 
-      <!-- WebRTC Status Indicator -->
       <div class="flex items-center gap-2">
         <Tag v-if="webrtcIntegration.isIntegrated.value" severity="success" class="text-xs">
           <i class="pi pi-check-circle mr-1"></i>
@@ -20,7 +19,6 @@
       </div>
     </div>
 
-    <!-- Active Call Display -->
     <Card v-if="callStore.hasActiveCall" class="mb-6">
       <template #content>
         <ActiveCallDisplay
@@ -34,7 +32,6 @@
       </template>
     </Card>
 
-    <!-- Dialer or Info Message (shown when no active call) -->
     <Card v-else>
       <template #title>
         <div class="flex items-center justify-between">
@@ -45,7 +42,6 @@
         </div>
       </template>
       <template #content>
-        <!-- Error Message Banner -->
         <Message
           v-if="lastCallError"
           severity="error"
@@ -62,7 +58,6 @@
           </div>
         </Message>
 
-        <!-- Message when dialing is in progress -->
         <div v-if="callStore.isDialing" class="max-w-md mx-auto py-8 text-center">
           <ProgressSpinner
             style="width: 60px; height: 60px"
@@ -77,7 +72,6 @@
           </p>
         </div>
 
-        <!-- Dialer when idle -->
         <div v-else class="max-w-md mx-auto">
           <Dialer
             v-model:phone-number="phoneNumber"
@@ -90,7 +84,6 @@
       </template>
     </Card>
 
-    <!-- Incoming Call Notification -->
     <Dialog
       v-model:visible="showIncomingCall"
       header="Chamada recebida"
@@ -99,7 +92,6 @@
       :style="{ width: '450px' }"
     >
       <div class="flex flex-col items-center text-center py-4">
-        <!-- Ringing Animation -->
         <div class="relative mb-6">
           <Avatar
             v-if="incomingCall?.callerName"
@@ -125,7 +117,6 @@
         </p>
 
         <div class="flex gap-4">
-          <!-- Reject Button -->
           <Button
             label="Recusar"
             icon="pi pi-times"
@@ -136,7 +127,6 @@
             @click="rejectCall"
           />
 
-          <!-- Answer Button -->
           <Button
             label="Atender"
             icon="pi pi-phone"
@@ -149,7 +139,6 @@
       </div>
     </Dialog>
 
-    <!-- Transfer Call Dialog -->
     <Dialog
       v-model:visible="transferDialogVisible"
       header="Transferir chamada"
@@ -191,7 +180,6 @@
       </template>
     </Dialog>
 
-    <!-- WebRTC Audio Player (hidden, plays remote audio) -->
     <WebRTCAudioPlayer :stream="webrtcPhone.remoteStream.value" />
   </div>
 </template>
@@ -208,11 +196,9 @@ const callStore = useCallStore()
 const authStore = useAuthStore()
 const { execute } = useCommandExecutor()
 
-// WebRTC Integration
 const webrtcIntegration = useWebRTCIntegration()
 const webrtcPhone = webrtcIntegration.phone
 
-// Use call handler for all call operations
 const {
   startOutboundCall,
   answerCall,
@@ -223,29 +209,24 @@ const {
   transferCall,
 } = useCallHandler()
 
-// State
 const phoneNumber = ref('')
 const transferNumber = ref('')
 const transferDialogVisible = ref(false)
 const lastCallError = ref<string | null>(null)
 
-// Computed
 const activeCall = computed(() => callStore.activeCall)
 const incomingCall = computed(() => callStore.incomingCall)
 const recentCalls = computed(() => callStore.recentCalls)
 const showIncomingCall = computed({
   get: () => callStore.hasIncomingCall,
-  set: () => {} // Prevent direct modification
+  set: () => {} 
 })
 
-// Call duration tracking
 const { callDuration } = useCallDuration(() => activeCall.value)
 
-// Register WebRTC on mount
 onMounted(async () => {
   const config = useRuntimeConfig()
 
-  // Only register if WebRTC is configured
   if (config.public.webrtcWssUrl && config.public.webrtcDomain) {
     const extension = authStore.user?.extension
 
@@ -278,30 +259,25 @@ onMounted(async () => {
   }
 })
 
-// Methods - wrapper for startCall with validation and UI updates
 const startCall = async (number?: string) => {
   const numberToCall = number || phoneNumber.value
 
   if (!numberToCall || numberToCall.length < 8) {
-    // Note: validation is minimal here; useCallHandler already shows error toasts
     return
   }
 
-  // Clear previous error
   lastCallError.value = null
 
   await execute({
     action: () => startOutboundCall(numberToCall),
-    showSuccessToast: false, // useCallHandler already shows toast
-    showErrorToast: false, // useCallHandler already shows toast
+    showSuccessToast: false, 
+    showErrorToast: false, 
     onSuccess: () => {
       phoneNumber.value = ''
     },
     onError: (error) => {
-      // Capture error for visual display
       lastCallError.value = error.message || 'Falha ao iniciar chamada'
 
-      // Auto-clear error after 10 seconds
       setTimeout(() => {
         lastCallError.value = null
       }, 10000)
@@ -321,11 +297,10 @@ const confirmTransfer = async () => {
     return
   }
 
-  // Use execute for consistent error logging, dialog closes only on success
   await execute({
     action: () => transferCall(transferNumber.value),
-    showSuccessToast: false, // useCallHandler shows toast
-    showErrorToast: false, // useCallHandler shows toast
+    showSuccessToast: false, 
+    showErrorToast: false, 
     onSuccess: () => { transferDialogVisible.value = false },
     logPrefix: 'Transfer',
     rethrow: false,

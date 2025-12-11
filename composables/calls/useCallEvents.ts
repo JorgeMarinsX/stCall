@@ -1,9 +1,5 @@
 import { useAgentStatus } from '~/composables/agent/useAgentStatus'
 
-/**
- * Composable for handling WebSocket events related to calls
- * Processes incoming call events, status changes, and call termination
- */
 export const useCallEvents = () => {
   const callStore = useCallStore()
   const { onCallStarted, onCallEnded } = useAgentStatus()
