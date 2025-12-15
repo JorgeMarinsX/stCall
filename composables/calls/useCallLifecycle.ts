@@ -1,142 +1,72 @@
 import { useAgentStatus } from '~/composables/agent/useAgentStatus'
+
 export const useCallLifecycle = () => {
   const callStore = useCallStore()
-  const authStore = useAuthStore()
   const { onCallStarted, onCallEnded } = useAgentStatus()
-  const { executeAsteriskCommand } = useCommandExecutor()
+  const { execute } = useCommandExecutor()
+  const webrtcPhone = useWebRTCPhone()
 
   const startOutboundCall = async (number: string): Promise<void> => {
-    if (!authStore.user?.extension) {
-      throw new Error('Extensão do agente não configurada')
-    }
     callStore.setIsDialing(true)
-    const result = await executeAsteriskCommand(
-      'originate',
-      {
-        endpoint: `PJSIP/${authStore.user.extension}`,
-        extension: number,
-        context: 'from-internal',
-        priority: 1,
+
+    await execute({
+      action: () => webrtcPhone.call(number),
+      showSuccessToast: false,
+      showErrorToast: false,
+      onSuccess: () => {
+        onCallStarted(`webrtc-${Date.now()}`, number)
       },
-      {
-        successMessage: {
-          title: 'Discando',
-          detail: `Iniciando chamada para ${number}...`,
-          life: 2000,
-        },
-        errorMessage: {
-          title: 'Erro ao iniciar chamada',
-          life: 8000, 
-        },
-        onSuccess: (result) => {
-          callStore.setActiveCall({
-            id: result.channelId || `call-${Date.now()}`,
-            number,
-            direction: 'outbound',
-            status: 'ringing',
-            startTime: new Date(),
-            duration: 0,
-            isMuted: false,
-            isOnHold: false,
-          })
-        },
-        onError: () => {
-          callStore.setIsDialing(false)
-        },
-        logPrefix: `Originate:${number}`,
-      }
-    )
+      onError: () => {
+        callStore.setIsDialing(false)
+      },
+      logPrefix: `WebRTC:OutboundCall:${number}`,
+      rethrow: true,
+    })
   }
   const answerCall = async (): Promise<void> => {
     const incomingCall = callStore.incomingCall
     if (!incomingCall) return
 
-    await executeAsteriskCommand(
-      'answer',
-      { channelId: incomingCall.id },
-      {
-        successMessage: {
-          title: 'Chamada atendida',
-          detail: 'Você está conectado',
-          life: 2000,
-        },
-        errorMessage: 'Erro ao atender chamada',
-        onSuccess: () => {
-          callStore.setActiveCall({ ...incomingCall, status: 'active' })
-          callStore.clearIncomingCall()
-          onCallStarted(incomingCall.id, incomingCall.number)
-        },
-        logPrefix: `Answer:${incomingCall.id}`,
-      }
-    )
+    await execute({
+      action: () => webrtcPhone.answer(),
+      showSuccessToast: false,
+      showErrorToast: false,
+      onSuccess: () => {
+        onCallStarted(incomingCall.id, incomingCall.number)
+      },
+      logPrefix: `WebRTC:Answer:${incomingCall.id}`,
+      rethrow: true,
+    })
   }
 
   const rejectCall = async (): Promise<void> => {
     const incomingCall = callStore.incomingCall
     if (!incomingCall) return
 
-    await executeAsteriskCommand(
-      'hangup',
-      { channelId: incomingCall.id },
-      {
-        successMessage: {
-          title: 'Chamada recusada',
-          detail: 'A chamada foi recusada',
-          life: 2000,
-        },
-        errorMessage: 'Erro ao recusar chamada',
-        showSuccessToast: true,
-        onSuccess: () => {
-          callStore.addToHistory({
-            id: incomingCall.id,
-            number: incomingCall.number,
-            callerName: incomingCall.callerName,
-            direction: incomingCall.direction,
-            duration: 0,
-            timestamp: new Date(),
-            status: 'rejected',
-          })
-          callStore.clearIncomingCall()
-        },
-        logPrefix: `Reject:${incomingCall.id}`,
-      }
-    )
+    await execute({
+      action: () => webrtcPhone.reject(),
+      showSuccessToast: false,
+      showErrorToast: false,
+      logPrefix: `WebRTC:Reject:${incomingCall.id}`,
+      rethrow: true,
+    })
   }
 
   const hangup = async (): Promise<void> => {
     const activeCall = callStore.activeCall
     if (!activeCall) return
 
-    const duration = callStore.activCallDuration
-    const formattedDuration = `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`
-
-    await executeAsteriskCommand(
-      'hangup',
-      { channelId: activeCall.id },
-      {
-        successMessage: {
-          title: 'Chamada encerrada',
-          detail: `Duração: ${formattedDuration}`,
-          life: 3000,
-        },
-        errorMessage: 'Erro ao encerrar chamada',
-        onSuccess: () => {
-          callStore.addToHistory({
-            id: activeCall.id,
-            number: activeCall.number,
-            callerName: activeCall.callerName,
-            direction: activeCall.direction,
-            duration,
-            timestamp: activeCall.startTime,
-            status: 'completed',
-          })
-          callStore.clearActiveCall()
-          callStore.setIsDialing(false)
-          onCallEnded()
-        },
-        logPrefix: `Hangup:${activeCall.id}`,
-      }
-    )
+    await execute({
+      action: () => webrtcPhone.hangup(),
+      showSuccessToast: false,
+      showErrorToast: false,
+      onSuccess: () => {
+        callStore.setIsDialing(false)
+        onCallEnded()
+      },
+      logPrefix: `WebRTC:Hangup:${activeCall.id}`,
+      rethrow: true,
+    })
   }
 
   return {

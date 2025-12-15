@@ -22,8 +22,9 @@
                 :label="connectButtonLabel"
                 :class="connectButtonClass"
                 class="mr-2 p-3"
-                :disabled="isDisconnected"
-                @click="toggleConnection"
+                :disabled="isDisconnected || isTogglingConnection"
+                :loading="isTogglingConnection"
+                @click="handleToggleConnection"
                 v-tooltip.bottom="connectTooltip"
             />
 
@@ -111,6 +112,7 @@ const dialerStore = useDialerStore();
 const { toggleConnection, startOutboundCall } = useCallHandler();
 const { retryWebSocketConnection } = useWebSocketHandler();
 const { callDuration } = useCallDuration(() => callStore.activeCall);
+const isTogglingConnection = ref(false);
 
 // Dialer UI management
 const initiateNewCall = () => {
@@ -163,6 +165,16 @@ const connectTooltip = computed(() =>
 
 function toggleDarkMode() {
     uiStore.toggleDarkMode();
+}
+
+async function handleToggleConnection() {
+    isTogglingConnection.value = true;
+    console.log('🔄 Toggling agent connection...');
+
+    await toggleConnection();
+
+    isTogglingConnection.value = false;
+    console.log('✅ Connection toggle completed');
 }
 
 // Debug watchers (only in development)

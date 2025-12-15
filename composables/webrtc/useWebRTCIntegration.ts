@@ -4,11 +4,22 @@ export const useWebRTCIntegration = () => {
   const asteriskStore = useAsteriskStore()
 
 
-  watch(() => phone.callState.value, (newState) => {
+  watch(() => phone.callState.value, (newState, oldState) => {
     if (!newState) {
-      // Call ended
-      if (callStore.activeCall) {
+      if (oldState && callStore.activeCall) {
+        const duration = Math.floor((Date.now() - callStore.activeCall.startTime.getTime()) / 1000)
+
+        callStore.addToHistory({
+          id: callStore.activeCall.id,
+          number: callStore.activeCall.number,
+          callerName: callStore.activeCall.callerName,
+          direction: callStore.activeCall.direction,
+          duration,
+          timestamp: callStore.activeCall.startTime,
+          status: 'completed',
+        })
         callStore.clearActiveCall()
+        callStore.setIsDialing(false)
       }
       return
     }
@@ -33,6 +44,9 @@ export const useWebRTCIntegration = () => {
     } else {
       callStore.setActiveCall(mappedCall)
       callStore.clearIncomingCall()
+      if (newState.state === 'ringing') {
+        callStore.setIsDialing(false)
+      }
     }
   })
 

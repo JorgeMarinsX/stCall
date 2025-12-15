@@ -16,6 +16,15 @@ declare module 'nuxt/schema' {
     asteriskAriPort: string
     asteriskWsPort: string
     apiBaseUrl: string
+    wsUrl: string
+
+    // WebRTC Configuration
+    webrtcWssUrl: string
+    webrtcDomain: string
+    webrtcStunServer: string
+    webrtcTurnServer: string
+    webrtcTurnUsername: string
+    webrtcTurnPassword: string
   }
 }
 

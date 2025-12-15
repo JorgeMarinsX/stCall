@@ -5,6 +5,7 @@ export interface User {
   role: 'agent' | 'admin' | 'supervisor'
   extension?: string
   avatar?: string
+  sipPassword?: string
 }
 
 export interface LoginResponse {
@@ -16,5 +17,6 @@ export interface LoginResponse {
     email: string
     role: 'agent' | 'admin' | 'supervisor'
     extension: string
+    sipPassword?: string
   }
 }

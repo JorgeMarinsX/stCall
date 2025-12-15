@@ -54,11 +54,32 @@ export const useCommandExecutor = () => {
 
       return result
     } catch (error: any) {
-      console.error(`❌ [${logPrefix}] Failed:`, error)
+      // Enhanced error logging for debugging
+      console.group(`❌ [${logPrefix}] Failed`)
+      console.error('Error object:', error)
+      console.error('Error message:', error?.message)
+      console.error('Error name:', error?.name)
 
-      if (error.technicalError) {
-        console.error(`[${logPrefix}] Technical error:`, error.technicalError)
+      if (error?.stack) {
+        console.error('Stack trace:', error.stack)
       }
+
+      if (error?.technicalError) {
+        console.error('Technical error:', error.technicalError)
+      }
+
+      if (error?.response) {
+        console.error('Response data:', error.response)
+      }
+
+      // Log full error as JSON for inspection
+      try {
+        console.error('Full error (JSON):', JSON.stringify(error, null, 2))
+      } catch (e) {
+        console.error('Error is not JSON serializable')
+      }
+
+      console.groupEnd()
 
       const extractedErrorMessage = errorMessageExtractor(error)
 

@@ -3,7 +3,7 @@ import type { UserAgent, Registerer, Session } from 'sip.js'
 /**
  * WebRTC State Management
  * Centralized reactive state for WebRTC phone
- * Similar to how stores manage state, but scoped to WebRTC session
+ * SINGLETON PATTERN: State created outside function so all calls share the same refs
  */
 
 export interface WebRTCCallState {
@@ -15,31 +15,28 @@ export interface WebRTCCallState {
   startTime: Date
 }
 
+// SINGLETON: Create refs outside function so they're shared across all calls
+const userAgent = ref<UserAgent | null>(null)
+const registerer = ref<Registerer | null>(null)
+const currentSession = ref<Session | null>(null)
+
+const isRegistered = ref(false)
+const registrationError = ref<string | null>(null)
+
+const callState = ref<WebRTCCallState | null>(null)
+
+const localStream = ref<MediaStream | null>(null)
+const remoteStream = ref<MediaStream | null>(null)
+
+const config = ref<{
+  wsServer: string
+  domain: string
+  username: string
+  password: string
+  displayName?: string
+} | null>(null)
+
 export const useWebRTCState = () => {
-  // SIP.js core instances
-  const userAgent = ref<UserAgent | null>(null)
-  const registerer = ref<Registerer | null>(null)
-  const currentSession = ref<Session | null>(null)
-
-  // Registration state
-  const isRegistered = ref(false)
-  const registrationError = ref<string | null>(null)
-
-  // Call state
-  const callState = ref<WebRTCCallState | null>(null)
-
-  // Media streams
-  const localStream = ref<MediaStream | null>(null)
-  const remoteStream = ref<MediaStream | null>(null)
-
-  // Connection config (stored for reconnection)
-  const config = ref<{
-    wsServer: string
-    domain: string
-    username: string
-    password: string
-    displayName?: string
-  } | null>(null)
 
   /**
    * Getters (computed properties)
