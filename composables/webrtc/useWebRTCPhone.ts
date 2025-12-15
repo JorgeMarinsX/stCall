@@ -17,19 +17,6 @@ export const useWebRTCPhone = () => {
   const callOps = useWebRTCCall()
   const media = useWebRTCMedia()
 
-  /**
-   * Cleanup on unmount
-   */
-  onUnmounted(async () => {
-    try {
-      await session.unregister()
-      media.cleanupStreams()
-      state.resetState()
-    } catch (error) {
-      console.error('Cleanup error:', error)
-    }
-  })
-
   // Re-export all methods and state through a single interface
   return {
     // State (reactive refs)

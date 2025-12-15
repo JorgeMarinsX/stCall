@@ -186,14 +186,12 @@
 
 <script setup lang="ts">
 import { useCallStore } from '~/stores/callStore'
-import { useAuthStore } from '~/stores/authStore'
 
 useHead({
   title: 'stCall - Chamadas',
 })
 
 const callStore = useCallStore()
-const authStore = useAuthStore()
 const { execute } = useCommandExecutor()
 
 const webrtcIntegration = useWebRTCIntegration()
@@ -224,40 +222,8 @@ const showIncomingCall = computed({
 
 const { callDuration } = useCallDuration(() => activeCall.value)
 
-onMounted(async () => {
-  const config = useRuntimeConfig()
-
-  if (config.public.webrtcWssUrl && config.public.webrtcDomain) {
-    const extension = authStore.user?.extension
-
-    if (!extension) {
-      console.warn('No extension found for WebRTC registration')
-      return
-    }
-
-    // TODO: Implement secure WebRTC credential storage
-    // For now, using extension as both username and password (TEMPORARY)
-    // In production, WebRTC credentials should:
-    // 1. Be returned from login endpoint
-    // 2. Be stored securely (encrypted in localStorage or memory only)
-    // 3. Be separate from user's login password
-    await execute({
-      action: () => webrtcPhone.register({
-        wsServer: config.public.webrtcWssUrl,
-        domain: config.public.webrtcDomain,
-        username: extension,
-        password: extension, // TEMPORARY: Replace with actual WebRTC password
-        displayName: authStore.user?.name,
-      }),
-      showSuccessToast: false,
-      showErrorToast: false, // Non-blocking: app can still work with ARI-only calling
-      logPrefix: 'WebRTC Register',
-      rethrow: false,
-    })
-  } else {
-    console.warn('WebRTC not configured. Set WEBRTC_WSS_URL and WEBRTC_DOMAIN in .env')
-  }
-})
+// WebRTC registration is handled globally by useAgentConnection when user connects to queue
+// No need to register again on this page - it was causing duplicate registrations on navigation
 
 const startCall = async (number?: string) => {
   const numberToCall = number || phoneNumber.value

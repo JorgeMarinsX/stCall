@@ -22,6 +22,7 @@ const currentSession = ref<Session | null>(null)
 
 const isRegistered = ref(false)
 const registrationError = ref<string | null>(null)
+const rejectionError = ref<string | null>(null)
 
 const callState = ref<WebRTCCallState | null>(null)
 
@@ -68,6 +69,7 @@ export const useWebRTCState = () => {
     currentSession.value = null
     isRegistered.value = false
     registrationError.value = null
+    rejectionError.value = null
     callState.value = null
     localStream.value = null
     remoteStream.value = null
@@ -83,6 +85,7 @@ export const useWebRTCState = () => {
     // Registration
     isRegistered,
     registrationError,
+    rejectionError,
     config,
 
     // Call state

@@ -45,6 +45,18 @@ export const useWebRTCSession = () => {
     password: string
     displayName?: string
   }): Promise<void> => {
+    // Prevent duplicate registration - if already registered with same credentials, skip
+    if (state.isRegistered.value && state.config.value?.username === config.username) {
+      console.log(`⏭️ Already registered as ${config.username}, skipping duplicate registration`)
+      return
+    }
+
+    // If registered but different credentials, unregister first
+    if (state.isRegistered.value && state.config.value?.username !== config.username) {
+      console.log(`🔄 Different credentials detected, re-registering from ${state.config.value?.username} to ${config.username}`)
+      await unregister()
+    }
+
     try {
       // Store config for potential reconnection
       state.config.value = config

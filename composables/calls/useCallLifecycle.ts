@@ -12,7 +12,11 @@ export const useCallLifecycle = () => {
     await execute({
       action: () => webrtcPhone.call(number),
       showSuccessToast: false,
-      showErrorToast: false,
+      showErrorToast: true,
+      errorMessage: {
+        title: 'Erro ao ligar',
+      },
+      errorMessageExtractor: (error: any) => error.message || 'Erro desconhecido ao realizar chamada',
       onSuccess: () => {
         onCallStarted(`webrtc-${Date.now()}`, number)
       },

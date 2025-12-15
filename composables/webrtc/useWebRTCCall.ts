@@ -10,7 +10,8 @@ export const useWebRTCCall = () => {
     session: Session,
     direction: 'inbound' | 'outbound',
     remoteNumber: string,
-    remoteName?: string
+    remoteName?: string,
+    rejectHandler?: (reason: string) => void
   ): void => {
     session.stateChange.addListener((sessionState: SessionState) => {
       console.log(`📞 Call state changed: ${sessionState}`)
@@ -32,9 +33,33 @@ export const useWebRTCCall = () => {
           media.cleanupStreams()
           state.currentSession.value = null
           state.callState.value = null
+
+          const inviter = session as any
+          if (inviter._response && inviter._response.statusCode >= 400 && rejectHandler) {
+            const statusCode = inviter._response.statusCode
+            const reasonPhrase = inviter._response.reasonPhrase
+            const errorMessage = getSIPErrorMessage(statusCode, reasonPhrase)
+            rejectHandler(errorMessage)
+          }
           break
       }
     })
+  }
+
+  const getSIPErrorMessage = (statusCode: number, reasonPhrase?: string): string => {
+    const errorMap: Record<number, string> = {
+      400: 'Requisição inválida',
+      403: 'Chamada não autorizada',
+      404: 'Número não encontrado',
+      408: 'Tempo de resposta esgotado',
+      480: 'Destinatário temporariamente indisponível',
+      486: 'Ocupado',
+      487: 'Chamada cancelada',
+      503: 'Serviço indisponível - verifique configuração do Asterisk',
+      603: 'Chamada recusada',
+    }
+
+    return errorMap[statusCode] || reasonPhrase || `Erro ${statusCode}`
   }
 
   const call = async (number: string): Promise<void> => {
@@ -54,13 +79,16 @@ export const useWebRTCCall = () => {
     }
 
     await execute({
-      action: async () => {
+      action: () => new Promise<void>((resolve, reject) => {
+        state.rejectionError.value = null
+
         const inviter = new Inviter(state.userAgent.value as UserAgent, target, inviterOptions)
         state.currentSession.value = inviter
 
-        setupSessionHandlers(inviter, 'outbound', number)
+        setupSessionHandlers(inviter, 'outbound', number, undefined, (errorMessage: string) => {
+          state.rejectionError.value = errorMessage
+        })
 
-        // Create call state
         state.callState.value = {
           id: inviter.id,
           remoteNumber: number,
@@ -69,16 +97,41 @@ export const useWebRTCCall = () => {
           startTime: new Date(),
         }
 
-        await inviter.invite()
+        const stateListener = (newState: SessionState) => {
+          if (newState === SessionState.Established) {
+            inviter.stateChange.removeListener(stateListener)
+            resolve()
+          } else if (newState === SessionState.Terminated) {
+            inviter.stateChange.removeListener(stateListener)
+            // Always reject with a proper error message
+            const errorMessage = state.rejectionError.value || 'Chamada não completada'
+            reject(new Error(errorMessage))
+          }
+        }
 
-        return inviter
-      },
+        inviter.stateChange.addListener(stateListener)
+
+        inviter.invite().catch((error) => {
+          inviter.stateChange.removeListener(stateListener)
+          const errorMessage = state.rejectionError.value || error.message || 'Erro ao enviar convite'
+          reject(new Error(errorMessage))
+        })
+      }),
       successMessage: {
         title: 'Ligando',
         detail: `Chamando ${number}...`,
         life: 2000,
       },
-      errorMessage: 'Erro ao ligar',
+      showErrorToast: true,
+      errorMessage: {
+        title: 'Erro ao ligar',
+      },
+      errorMessageExtractor: (error: any) => {
+        if (state.rejectionError.value) {
+          return state.rejectionError.value
+        }
+        return error.message || 'Erro desconhecido ao realizar chamada'
+      },
       onError: () => {
         state.currentSession.value = null
         state.callState.value = null
@@ -87,9 +140,6 @@ export const useWebRTCCall = () => {
     })
   }
 
-  /**
-   * Answer an incoming call
-   */
   const answer = async (): Promise<void> => {
     if (!state.currentSession.value) {
       throw new Error('Nenhuma chamada para atender')
@@ -122,9 +172,6 @@ export const useWebRTCCall = () => {
     })
   }
 
-  /**
-   * Reject an incoming call
-   */
   const reject = async (): Promise<void> => {
     if (!state.currentSession.value) {
       throw new Error('Nenhuma chamada para recusar')
@@ -148,9 +195,6 @@ export const useWebRTCCall = () => {
     })
   }
 
-  /**
-   * Hangup active call
-   */
   const hangup = async (): Promise<void> => {
     if (!state.currentSession.value) {
       console.warn('No active session to hangup')
@@ -183,9 +227,6 @@ export const useWebRTCCall = () => {
     })
   }
 
-  /**
-   * Hold/unhold call
-   */
   const setHold = async (enable: boolean): Promise<void> => {
     if (!state.currentSession.value) {
       console.warn('No active session to hold')
@@ -218,14 +259,9 @@ export const useWebRTCCall = () => {
     })
   }
 
-  /**
-   * Handle incoming invitation
-   * Called by UserAgent delegate when receiving incoming call
-   */
   const handleIncomingInvitation = (invitation: any): void => {
     state.currentSession.value = invitation
 
-    // Get caller info from SIP headers
     const callerNumber = invitation.remoteIdentity.uri.user
     const callerName = invitation.remoteIdentity.displayName
 
