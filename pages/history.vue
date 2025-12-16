@@ -2,6 +2,9 @@
   <div class="p-6 w-full">
     <div class="mb-4">
       <h1 class="text-3xl font-semibold mb-2 w-full">Histórico de Chamadas</h1>
+      <p class="text-gray-600 dark:text-gray-400">
+        {{ authStore.isAdmin ? 'Visualizando chamadas de todos os agentes' : 'Visualizando suas chamadas' }}
+      </p>
     </div>
 
   <div class="flex flex-row h-fit">
@@ -55,7 +58,23 @@
             />
           </div>
 
-          <div class="col-12 md:col-2">
+          <div v-if="authStore.isAdmin" class="col-12 md:col-3">
+            <label for="agent" class="block text-sm font-medium mb-2">
+              Agente
+            </label>
+            <Select
+              id="agent"
+              v-model="filters.agentId"
+              :options="agentOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="Todos os agentes"
+              class="w-full"
+              filter
+            />
+          </div>
+
+          <div :class="authStore.isAdmin ? 'col-12 md:col-3' : 'col-12 md:col-2'">
             <label for="search" class="block text-sm font-medium mb-2">
               Buscar
             </label>
@@ -114,6 +133,23 @@
               <div>
                 <div class="font-medium">{{ data.callerName || 'Desconhecido' }}</div>
                 <div class="text-sm text-muted-color">{{ data.number }}</div>
+              </div>
+            </template>
+          </Column>
+
+          <Column v-if="authStore.isAdmin" field="agentName" header="Agente" sortable :style="{ width: '180px' }">
+            <template #body="{ data }">
+              <div class="flex items-center gap-2">
+                <Avatar
+                  :label="data.agentName?.charAt(0).toUpperCase() || 'A'"
+                  shape="circle"
+                  size="small"
+                  class="bg-orange-600 text-white"
+                />
+                <div>
+                  <div class="font-medium text-sm">{{ data.agentName || 'Desconhecido' }}</div>
+                  <div class="text-xs text-muted-color">Ramal {{ data.agentExtension || '-' }}</div>
+                </div>
               </div>
             </template>
           </Column>
@@ -181,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useCallStore } from '~/stores/callStore'
 import type { CallHistory } from '~/types'
 
@@ -190,11 +226,15 @@ useHead({
 })
 
 const callStore = useCallStore()
+const authStore = useAuthStore()
+const agentStore = useAgentStore()
+const { execute } = useCommandExecutor()
 
 const filters = ref({
   dateRange: null as Date[] | null,
   direction: null as string | null,
   status: null as string | null,
+  agentId: null as string | null,
   search: '',
 })
 
@@ -214,8 +254,29 @@ const statusOptions = [
 const showPlayer = ref(false)
 const selectedCall = ref<CallHistory | null>(null)
 
+// Agent options for admin filter
+const agentOptions = computed(() => {
+  const allOption = { label: 'Todos os agentes', value: null }
+  const agents = agentStore.agents.map(agent => ({
+    label: `${agent.name} (${agent.extension})`,
+    value: agent.id
+  }))
+  return [allOption, ...agents]
+})
+
 const filteredCalls = computed(() => {
   let calls = [...callStore.callHistory]
+
+  // If not admin, only show calls for current user
+  if (!authStore.isAdmin && authStore.user) {
+    const userId = authStore.user.id
+    calls = calls.filter(call => call.agentId === userId)
+  }
+
+  // Admin agent filter
+  if (authStore.isAdmin && filters.value.agentId) {
+    calls = calls.filter(call => call.agentId === filters.value.agentId)
+  }
 
   if (filters.value.dateRange && filters.value.dateRange.length === 2) {
     const [start, end] = filters.value.dateRange
@@ -239,7 +300,8 @@ const filteredCalls = computed(() => {
     const searchLower = filters.value.search.toLowerCase()
     calls = calls.filter(call =>
       call.number.toLowerCase().includes(searchLower) ||
-      call.callerName?.toLowerCase().includes(searchLower)
+      call.callerName?.toLowerCase().includes(searchLower) ||
+      (authStore.isAdmin && call.agentName?.toLowerCase().includes(searchLower))
     )
   }
 
@@ -292,6 +354,7 @@ const clearFilters = () => {
     dateRange: null,
     direction: null,
     status: null,
+    agentId: null,
     search: '',
   }
 }
@@ -300,4 +363,18 @@ const playRecording = (call: CallHistory) => {
   selectedCall.value = call
   showPlayer.value = true
 }
+
+// Lifecycle
+onMounted(async () => {
+  // Load agents if admin (for agent filter dropdown)
+  if (authStore.isAdmin) {
+    await execute({
+      action: () => agentStore.fetchAllAgents(),
+      errorMessage: 'Falha ao carregar lista de agentes',
+      logPrefix: 'History:LoadAgents',
+      showSuccessToast: false,
+      rethrow: false,
+    })
+  }
+})
 </script>

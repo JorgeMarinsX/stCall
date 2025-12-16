@@ -6,11 +6,16 @@ export interface Agent {
   name: string
   email: string
   extension?: string
+  avatar?: string
   status: AgentStatus
   currentCallId?: string
   currentCallNumber?: string
   callStartTime?: Date
   isConnected: boolean
+  activeCall?: {
+    number: string
+    startTime: Date
+  }
 }
 
 export interface AgentStats {

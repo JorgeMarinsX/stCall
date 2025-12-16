@@ -23,4 +23,7 @@ export interface CallHistory {
   timestamp: Date
   recordingUrl?: string
   status: 'completed' | 'missed' | 'rejected'
+  agentId?: string
+  agentName?: string
+  agentExtension?: string
 }

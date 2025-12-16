@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed } from 'vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -59,15 +59,22 @@ const logout = async () => {
     }
 }
 
-const navItems = ref([
-    { key: 'dashboard', label: 'Dashboard', icon: 'pi pi-gauge', route: '/' },
-    { key: 'agents', label: 'Gerenciar Agentes', icon: 'pi pi-users', route: '/agents' },
-    { key: 'call', label: 'Chamadas', icon: 'pi pi-phone', route: '/call' },
-    { key: 'history', label: 'Histórico', icon: 'pi pi-history', route: '/history' },
-    { key: 'profile', label: 'Perfil', icon: 'pi pi-user', route: '/profile' },
-    { key: 'settings', label: 'Configurações', icon: 'pi pi-cog', route: '/settings' }
+const allNavItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: 'pi pi-gauge', route: '/', roles: ['agent', 'admin', 'supervisor'] },
+    { key: 'admin-dashboard', label: 'Admin', icon: 'pi pi-chart-line', route: '/admin', roles: ['admin', 'supervisor'] },
+    { key: 'analytics', label: 'Analytics', icon: 'pi pi-chart-bar', route: '/admin/analytics', roles: ['admin', 'supervisor'] },
+    { key: 'agents', label: 'Agentes', icon: 'pi pi-users', route: '/agents', roles: ['admin', 'supervisor'] },
+    { key: 'call', label: 'Chamadas', icon: 'pi pi-phone', route: '/call', roles: ['agent', 'admin', 'supervisor'] },
+    { key: 'history', label: 'Histórico', icon: 'pi pi-history', route: '/history', roles: ['agent', 'admin', 'supervisor'] },
+    { key: 'profile', label: 'Perfil', icon: 'pi pi-user', route: '/profile', roles: ['agent', 'admin', 'supervisor'] },
+    { key: 'settings', label: 'Config', icon: 'pi pi-cog', route: '/settings', roles: ['agent', 'admin', 'supervisor'] }
+]
 
-]);
+// Filter nav items based on user role
+const navItems = computed(() => {
+    const userRole = authStore.user?.role || 'agent'
+    return allNavItems.filter(item => item.roles.includes(userRole))
+})
 </script>
 
 
