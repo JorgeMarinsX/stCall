@@ -65,8 +65,8 @@
 
             <ClientOnly>
                 <div class="flex items-center gap-3 border-l border-gray-300 dark:border-gray-600 pl-4">
-                    <VolumeIndicator :compact="true" />
-                    <MicrophoneSelector :compact="true" />
+                    <VolumeIndicator :compact="false"/>
+                    <MicrophoneSelector :compact="false" />
                 </div>
                 <template #fallback>
                     <div class="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-4">
@@ -99,7 +99,6 @@
     </template>
 </Toolbar>
 
-<!-- Dialer Dialog -->
 <Dialog
     v-model:visible="dialerVisible"
     header="Nova chamada"
