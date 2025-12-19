@@ -2,16 +2,37 @@
   <div class="p-6 w-full mx-auto">
     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">Configurações</h1>
 
-    <TabView>
-      <TabPanel value="0">
-        <template #header>
+    <Tabs value="0">
+      <TabList>
+        <Tab value="0">
           <div class="flex items-center gap-2">
             <i class="pi pi-palette"></i>
             <span>Aparência</span>
           </div>
-        </template>
+        </Tab>
+        <Tab value="1">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-volume-up"></i>
+            <span>Áudio</span>
+          </div>
+        </Tab>
+        <Tab value="2">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-bell"></i>
+            <span>Notificações</span>
+          </div>
+        </Tab>
+        <Tab v-if="authStore.isAdmin" value="3">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-cog"></i>
+            <span>Sistema</span>
+          </div>
+        </Tab>
+      </TabList>
 
-        <div class="space-y-6">
+      <TabPanels>
+        <TabPanel value="0">
+          <div class="space-y-6">
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -27,7 +48,7 @@
                     Altere a aparência da interface para tons escuros
                   </p>
                 </div>
-                <InputSwitch v-model="uiStore.isDarkMode" @change="handleDarkModeToggle" />
+                <ToggleSwitch v-model="uiStore.isDarkMode" @change="handleDarkModeToggle" />
               </div>
             </template>
           </Card>
@@ -73,22 +94,16 @@
                       Reduz o espaçamento entre elementos da interface
                     </p>
                   </div>
-                  <InputSwitch v-model="compactMode" @change="handleCompactModeToggle" />
+                  <ToggleSwitch v-model="compactMode" @change="handleCompactModeToggle" />
                 </div>
               </div>
             </template>
           </Card>
-        </div>
-      </TabPanel>
-      <TabPanel value="1">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-volume-up"></i>
-            <span>Áudio</span>
           </div>
-        </template>
+        </TabPanel>
 
-        <div class="space-y-6">
+        <TabPanel value="1">
+          <div class="space-y-6">
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -131,7 +146,7 @@
                       Remove ruídos de fundo durante chamadas
                     </p>
                   </div>
-                  <InputSwitch v-model="noiseCancellation" @change="handleNoiseCancellationToggle" />
+                  <ToggleSwitch v-model="noiseCancellation" @change="handleNoiseCancellationToggle" />
                 </div>
               </div>
             </template>
@@ -231,17 +246,11 @@
               </div>
             </template>
           </Card>
-        </div>
-      </TabPanel>
-      <TabPanel value="2">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-bell"></i>
-            <span>Notificações</span>
           </div>
-        </template>
+        </TabPanel>
 
-        <div class="space-y-6">
+        <TabPanel value="2">
+          <div class="space-y-6">
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -258,7 +267,7 @@
                       Receba notificações quando receber uma chamada
                     </p>
                   </div>
-                  <InputSwitch
+                  <ToggleSwitch
                     v-model="uiStore.notificationPreferences.callNotifications"
                     @change="handleNotificationPreferenceChange"
                   />
@@ -273,7 +282,7 @@
                       Reproduzir som ao receber notificações
                     </p>
                   </div>
-                  <InputSwitch
+                  <ToggleSwitch
                     v-model="uiStore.notificationPreferences.soundEnabled"
                     @change="handleNotificationPreferenceChange"
                   />
@@ -315,7 +324,7 @@
                       Alertas de manutenção, atualizações e avisos importantes
                     </p>
                   </div>
-                  <InputSwitch
+                  <ToggleSwitch
                     v-model="uiStore.notificationPreferences.systemNotifications"
                     @change="handleNotificationPreferenceChange"
                   />
@@ -330,22 +339,16 @@
                       Receba avisos sobre novas versões e funcionalidades
                     </p>
                   </div>
-                  <InputSwitch v-model="releaseNotesEnabled" />
+                  <ToggleSwitch v-model="releaseNotesEnabled" />
                 </div>
               </div>
             </template>
           </Card>
-        </div>
-      </TabPanel>
-      <TabPanel v-if="authStore.isAdmin" value="3">
-        <template #header>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-cog"></i>
-            <span>Sistema</span>
           </div>
-        </template>
+        </TabPanel>
 
-        <div class="space-y-6">
+        <TabPanel v-if="authStore.isAdmin" value="3">
+          <div class="space-y-6">
           <Card>
             <template #title>
               <div class="flex items-center gap-2">
@@ -454,7 +457,7 @@
                       Todas as chamadas serão gravadas por padrão
                     </p>
                   </div>
-                  <InputSwitch v-model="systemSettings.autoRecordCalls" />
+                  <ToggleSwitch v-model="systemSettings.autoRecordCalls" />
                 </div>
 
                 <div class="pt-4">
@@ -504,7 +507,7 @@
                       Executar limpeza diária de arquivos antigos
                     </p>
                   </div>
-                  <InputSwitch v-model="systemSettings.autoCleanup" />
+                  <ToggleSwitch v-model="systemSettings.autoCleanup" />
                 </div>
 
                 <div class="pt-4">
@@ -518,9 +521,10 @@
               </div>
             </template>
           </Card>
-        </div>
-      </TabPanel>
-    </TabView>
+          </div>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
   </div>
 </template>
 
@@ -534,6 +538,7 @@ useHead({
 
 const uiStore = useUiStore()
 const authStore = useAuthStore()
+const audioStore = useAudioStore()
 const toast = useToast()
 const { execute } = useCommandExecutor()
 
@@ -543,22 +548,19 @@ const browserNotificationsEnabled = ref(false)
 const releaseNotesEnabled = ref(true)
 const savingSystemSettings = ref(false)
 
-// Audio devices
-const selectedMicrophone = ref('default')
-const selectedSpeaker = ref('default')
+// Audio devices - using audioStore
+const selectedMicrophone = computed({
+  get: () => audioStore.selectedMicrophoneId,
+  set: (value) => audioStore.setMicrophone(value)
+})
+const selectedSpeaker = computed({
+  get: () => audioStore.selectedSpeakerId,
+  set: (value) => audioStore.setSpeaker(value)
+})
 const selectedRingtone = ref('default')
 
-const microphones = ref([
-  { id: 'default', label: 'Microfone padrão do sistema' },
-  { id: 'mic1', label: 'Microfone USB (Exemplo)' },
-  { id: 'mic2', label: 'Fone de ouvido (Exemplo)' },
-])
-
-const speakers = ref([
-  { id: 'default', label: 'Alto-falante padrão do sistema' },
-  { id: 'speaker1', label: 'Alto-falante USB (Exemplo)' },
-  { id: 'speaker2', label: 'Fone de ouvido (Exemplo)' },
-])
+const microphones = computed(() => audioStore.availableMicrophones)
+const speakers = computed(() => audioStore.availableSpeakers)
 
 const ringtones = ref([
   { id: 'default', label: 'Toque padrão' },
@@ -567,11 +569,20 @@ const ringtones = ref([
   { id: 'gentle', label: 'Suave' },
 ])
 
-// Audio levels
-const microphoneVolume = ref(80)
-const speakerVolume = ref(70)
+// Audio levels - using audioStore
+const microphoneVolume = computed({
+  get: () => audioStore.microphoneVolume,
+  set: (value) => audioStore.setMicrophoneVolume(value)
+})
+const speakerVolume = computed({
+  get: () => audioStore.speakerVolume,
+  set: (value) => audioStore.setSpeakerVolume(value)
+})
 const ringtoneVolume = ref(60)
-const noiseCancellation = ref(true)
+const noiseCancellation = computed({
+  get: () => audioStore.noiseCancellation,
+  set: (value) => audioStore.setNoiseCancellation(value)
+})
 
 // System settings (Admin only)
 const systemSettings = ref({
@@ -607,7 +618,6 @@ const handleCompactModeToggle = () => {
 }
 
 const handleMicrophoneChange = () => {
-  // TODO: Change microphone device
   toast.add({
     severity: 'success',
     summary: 'Microfone atualizado',
@@ -617,7 +627,6 @@ const handleMicrophoneChange = () => {
 }
 
 const handleSpeakerChange = () => {
-  // TODO: Change speaker device
   toast.add({
     severity: 'success',
     summary: 'Alto-falante atualizado',
@@ -627,17 +636,14 @@ const handleSpeakerChange = () => {
 }
 
 const handleMicrophoneVolumeChange = () => {
-  // TODO: Set microphone volume
   console.log('Microphone volume:', microphoneVolume.value)
 }
 
 const handleSpeakerVolumeChange = () => {
-  // TODO: Set speaker volume
   console.log('Speaker volume:', speakerVolume.value)
 }
 
 const handleNoiseCancellationToggle = () => {
-  // TODO: Toggle noise cancellation
   toast.add({
     severity: 'info',
     summary: 'Cancelamento de ruído',
@@ -737,37 +743,43 @@ const saveSystemSettings = async () => {
   savingSystemSettings.value = false
 }
 
-// Load audio devices on mount
-onMounted(async () => {
-  // Check browser notification permission
-  if (import.meta.client && 'Notification' in window) {
+onMounted(() => {
+  if (!import.meta.client) return
+
+  if ('Notification' in window) {
     browserNotificationsEnabled.value = Notification.permission === 'granted'
   }
 
-  // TODO: Load actual audio devices using navigator.mediaDevices.enumerateDevices()
-  try {
-    if (import.meta.client && navigator.mediaDevices) {
+  audioStore.loadAudioSettings()
+
+  execute({
+    action: async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach(track => track.stop())
+
       const devices = await navigator.mediaDevices.enumerateDevices()
 
-      const mics = devices.filter(device => device.kind === 'audioinput')
-      const spkrs = devices.filter(device => device.kind === 'audiooutput')
-
-      if (mics.length > 0) {
-        microphones.value = mics.map(device => ({
-          id: device.deviceId,
+      const mics = devices
+        .filter(device => device.kind === 'audioinput')
+        .map(device => ({
+          id: device.deviceId || 'default',
           label: device.label || `Microfone ${device.deviceId.slice(0, 8)}`,
         }))
-      }
 
-      if (spkrs.length > 0) {
-        speakers.value = spkrs.map(device => ({
-          id: device.deviceId,
+      const spkrs = devices
+        .filter(device => device.kind === 'audiooutput')
+        .map(device => ({
+          id: device.deviceId || 'default',
           label: device.label || `Alto-falante ${device.deviceId.slice(0, 8)}`,
         }))
-      }
-    }
-  } catch (error) {
-    console.error('Error loading audio devices:', error)
-  }
+
+      audioStore.setAvailableMicrophones(mics)
+      audioStore.setAvailableSpeakers(spkrs)
+    },
+    showSuccessToast: false,
+    showErrorToast: false,
+    logPrefix: 'Load Audio Devices',
+    rethrow: false,
+  })
 })
 </script>

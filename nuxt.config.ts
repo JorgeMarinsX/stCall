@@ -78,6 +78,8 @@ export default defineNuxtConfig({
   },
   compatibilityDate: '2024-11-18',
   app: {
+    pageTransition: { name: 'page', mode: 'out-in' },
+    layoutTransition: { name: 'layout', mode: 'out-in' },
     head:{
       title: 'stCall - Callcenter Software',
       meta:[

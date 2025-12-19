@@ -3,19 +3,28 @@
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Chamadas</h1>
 
-      <div class="flex items-center gap-2">
-        <Tag v-if="webrtcIntegration.isIntegrated.value" severity="success" class="text-xs">
-          <i class="pi pi-check-circle mr-1"></i>
-          WebRTC Conectado
-        </Tag>
-        <Tag v-else-if="webrtcPhone.isRegistered.value" severity="warn" class="text-xs">
-          <i class="pi pi-exclamation-triangle mr-1"></i>
-          WebRTC: Sem ARI
-        </Tag>
-        <Tag v-else severity="contrast" class="text-xs">
-          <i class="pi pi-circle mr-1"></i>
-          WebRTC: Offline
-        </Tag>
+      <div class="flex items-center gap-4">
+        <ClientOnly>
+          <div class="flex items-center gap-3 border-r border-gray-300 dark:border-gray-600 pr-4">
+            <VolumeIndicator />
+            <MicrophoneSelector />
+          </div>
+        </ClientOnly>
+
+        <div class="flex items-center gap-2">
+          <Tag v-if="webrtcIntegration.isIntegrated.value" severity="success" class="text-xs">
+            <i class="pi pi-check-circle mr-1"></i>
+            WebRTC Conectado
+          </Tag>
+          <Tag v-else-if="webrtcPhone.isRegistered.value" severity="warn" class="text-xs">
+            <i class="pi pi-exclamation-triangle mr-1"></i>
+            WebRTC: Sem ARI
+          </Tag>
+          <Tag v-else severity="contrast" class="text-xs">
+            <i class="pi pi-circle mr-1"></i>
+            WebRTC: Offline
+          </Tag>
+        </div>
       </div>
     </div>
 
@@ -192,6 +201,8 @@ useHead({
 })
 
 const callStore = useCallStore()
+const audioStore = useAudioStore()
+const agentStore = useAgentStore()
 const { execute } = useCommandExecutor()
 
 const webrtcIntegration = useWebRTCIntegration()
@@ -217,13 +228,27 @@ const incomingCall = computed(() => callStore.incomingCall)
 const recentCalls = computed(() => callStore.recentCalls)
 const showIncomingCall = computed({
   get: () => callStore.hasIncomingCall,
-  set: () => {} 
+  set: () => {}
 })
 
 const { callDuration } = useCallDuration(() => activeCall.value)
+const { startMonitoring, stopMonitoring } = useAudioLevel()
 
-// WebRTC registration is handled globally by useAgentConnection when user connects to queue
-// No need to register again on this page - it was causing duplicate registrations on navigation
+onMounted(() => {
+  audioStore.loadAudioSettings()
+  if (agentStore.isConnectedToQueue) {
+    startMonitoring()
+  }
+})
+
+watch(() => agentStore.isConnectedToQueue, (isConnected) => {
+  if (isConnected) {
+    startMonitoring()
+  } else {
+    stopMonitoring()
+  }
+})
+
 
 const startCall = async (number?: string) => {
   const numberToCall = number || phoneNumber.value

@@ -4,7 +4,13 @@ import type { Session, InviterOptions } from 'sip.js'
 export const useWebRTCCall = () => {
   const state = useWebRTCState()
   const media = useWebRTCMedia()
+  const audioStore = useAudioStore()
   const { execute } = useCommandExecutor()
+
+  const getAudioConstraints = () => {
+    const deviceId = audioStore.selectedMicrophoneId
+    return deviceId === 'default' ? true : { deviceId: { exact: deviceId } }
+  }
 
   const setupSessionHandlers = (
     session: Session,
@@ -72,7 +78,7 @@ export const useWebRTCCall = () => {
     const inviterOptions: InviterOptions = {
       sessionDescriptionHandlerOptions: {
         constraints: {
-          audio: true,
+          audio: getAudioConstraints(),
           video: false,
         }
       }
@@ -152,7 +158,7 @@ export const useWebRTCCall = () => {
         await session.accept({
           sessionDescriptionHandlerOptions: {
             constraints: {
-              audio: true,
+              audio: getAudioConstraints(),
               video: false,
             }
           }

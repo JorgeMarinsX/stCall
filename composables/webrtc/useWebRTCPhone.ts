@@ -1,15 +1,3 @@
-/**
- * Main WebRTC Phone Composable
- * Aggregates all WebRTC functionality into a single interface
- * Pattern: Similar to useCallHandler - combines specialized composables
- *
- * USAGE:
- * const phone = useWebRTCPhone()
- * await phone.register({ wsServer, domain, username, password })
- * await phone.call('1002')
- * phone.hangup()
- */
-
 export const useWebRTCPhone = () => {
   // Import specialized composables
   const state = useWebRTCState()
@@ -46,5 +34,6 @@ export const useWebRTCPhone = () => {
     // Media methods
     setMuted: media.setMuted,
     sendDTMF: media.sendDTMF,
+    switchMicrophone: media.switchMicrophone,
   }
 }

@@ -1,13 +1,9 @@
 import type { Session } from 'sip.js'
 
-/**
- * WebRTC Media Management
- * Handles audio streams, mute/unmute, and media track management
- * RESPONSIBILITY: Manage MediaStreams and audio tracks
- */
 
 export const useWebRTCMedia = () => {
   const state = useWebRTCState()
+  const audioStore = useAudioStore()
 
   /**
    * Attach media streams from RTCPeerConnection
@@ -95,10 +91,58 @@ export const useWebRTCMedia = () => {
     }
   }
 
+  /**
+   * Switch microphone device during active call
+   */
+  const switchMicrophone = async (deviceId: string): Promise<void> => {
+    if (!state.currentSession.value) {
+      console.warn('No active session to switch microphone')
+      return
+    }
+
+    const session = state.currentSession.value as any
+    const sessionDescriptionHandler = session.sessionDescriptionHandler
+    const peerConnection = sessionDescriptionHandler?.peerConnection as RTCPeerConnection
+
+    if (!peerConnection) {
+      console.error('No peer connection available')
+      return
+    }
+
+    const constraints: MediaStreamConstraints = {
+      audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } },
+      video: false
+    }
+
+    const newStream = await navigator.mediaDevices.getUserMedia(constraints)
+    const newAudioTrack = newStream.getAudioTracks()[0]
+
+    const sender = peerConnection.getSenders().find(s => s.track?.kind === 'audio')
+    if (sender) {
+      await sender.replaceTrack(newAudioTrack)
+
+      if (state.localStream.value) {
+        const oldTrack = state.localStream.value.getAudioTracks()[0]
+        oldTrack?.stop()
+        state.localStream.value.removeTrack(oldTrack)
+        state.localStream.value.addTrack(newAudioTrack)
+      }
+
+      console.log(`🎤 Switched to microphone: ${deviceId}`)
+    }
+  }
+
+  watch(() => audioStore.selectedMicrophoneId, async (newDeviceId, oldDeviceId) => {
+    if (state.currentSession.value && newDeviceId !== oldDeviceId) {
+      await switchMicrophone(newDeviceId)
+    }
+  })
+
   return {
     attachMediaStreams,
     cleanupStreams,
     setMuted,
     sendDTMF,
+    switchMicrophone,
   }
 }

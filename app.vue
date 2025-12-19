@@ -6,6 +6,16 @@
 </template>
 
 <script setup>
-// Store initialization is now handled by middleware/auth.global.ts
-// This keeps app.vue clean and moves auth logic to route guards
+// Register toast service immediately when app.vue sets up
+const { globalToast } = useGlobalToast()
+const toast = useToast()
+
+if (toast) {
+  globalToast.register(toast)
+}
+
+// Cleanup on unmount
+onUnmounted(() => {
+  globalToast.unregister()
+})
 </script>

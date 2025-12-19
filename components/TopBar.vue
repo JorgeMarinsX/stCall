@@ -47,19 +47,34 @@
     </template>
 
     <template #center>
-        <div v-if="hasActiveCall" class="bg-green-50 dark:bg-green-900 rounded-lg">
-            <NuxtLink to="/call">
-            <ActiveCallDisplay
-                :call="activeCall"
-                :duration="callDuration"
-                :compact="true"
-                :show-controls="false"
-                :show-badge="false"
-            />
-            </NuxtLink>
-        </div>
-        <div v-else class="text-gray-500 dark:text-gray-400 px-4 py-2">
-            Nenhuma chamada ativa
+        <div class="flex items-center gap-4">
+            <div v-if="hasActiveCall" class="bg-green-50 dark:bg-green-900 rounded-lg">
+                <NuxtLink to="/call">
+                <ActiveCallDisplay
+                    :call="activeCall"
+                    :duration="callDuration"
+                    :compact="true"
+                    :show-controls="false"
+                    :show-badge="false"
+                />
+                </NuxtLink>
+            </div>
+            <div v-else class="text-gray-500 dark:text-gray-400 px-4 py-2">
+                Nenhuma chamada ativa
+            </div>
+
+            <ClientOnly>
+                <div class="flex items-center gap-3 border-l border-gray-300 dark:border-gray-600 pl-4">
+                    <VolumeIndicator :compact="true" />
+                    <MicrophoneSelector :compact="true" />
+                </div>
+                <template #fallback>
+                    <div class="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-4">
+                        <Skeleton width="80px" height="20px" />
+                        <Skeleton width="120px" height="32px" />
+                    </div>
+                </template>
+            </ClientOnly>
         </div>
     </template>
 
@@ -108,11 +123,28 @@ const callStore = useCallStore();
 const agentStore = useAgentStore();
 const asteriskStore = useAsteriskStore();
 const dialerStore = useDialerStore();
+const audioStore = useAudioStore();
 
 const { toggleConnection, startOutboundCall } = useCallHandler();
 const { retryWebSocketConnection } = useWebSocketHandler();
 const { callDuration } = useCallDuration(() => callStore.activeCall);
+const { startMonitoring, stopMonitoring } = useAudioLevel();
 const isTogglingConnection = ref(false);
+
+onMounted(() => {
+    audioStore.loadAudioSettings();
+    if (agentStore.isConnectedToQueue) {
+        startMonitoring();
+    }
+});
+
+watch(() => agentStore.isConnectedToQueue, (isConnected) => {
+    if (isConnected) {
+        startMonitoring();
+    } else {
+        stopMonitoring();
+    }
+});
 
 // Dialer UI management
 const initiateNewCall = () => {

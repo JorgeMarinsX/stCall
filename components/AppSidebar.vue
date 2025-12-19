@@ -65,6 +65,7 @@ const allNavItems = [
     { key: 'analytics', label: 'Analytics', icon: 'pi pi-chart-bar', route: '/admin/analytics', roles: ['admin', 'supervisor'] },
     { key: 'agents', label: 'Agentes', icon: 'pi pi-users', route: '/agents', roles: ['admin', 'supervisor'] },
     { key: 'call', label: 'Chamadas', icon: 'pi pi-phone', route: '/call', roles: ['agent', 'admin', 'supervisor'] },
+    { key: 'mic-test', label: 'Mic Test', icon: 'pi pi-microphone', route: '/mic-test', roles: ['agent', 'admin', 'supervisor'] },
     { key: 'history', label: 'Histórico', icon: 'pi pi-history', route: '/history', roles: ['agent', 'admin', 'supervisor'] },
     { key: 'profile', label: 'Perfil', icon: 'pi pi-user', route: '/profile', roles: ['agent', 'admin', 'supervisor'] },
     { key: 'settings', label: 'Config', icon: 'pi pi-cog', route: '/settings', roles: ['agent', 'admin', 'supervisor'] }

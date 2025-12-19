@@ -1,5 +1,3 @@
-//import type { ToastMessageOptions } from 'primevue/toast'
-
 type ToastSeverity = 'success' | 'info' | 'warn' | 'error'
 
 interface ToastMessage {
@@ -15,7 +13,14 @@ class ToastManager {
 
 
   register(toastService: any) {
+    // Idempotent: if already registered, do nothing
+    if (this.toastService) {
+      console.debug('[ToastManager] Toast service already registered, skipping')
+      return
+    }
+
     this.toastService = toastService
+    console.log('[ToastManager] Toast service registered')
 
     if (this.pendingMessages.length > 0) {
       console.log(`[ToastManager] Showing ${this.pendingMessages.length} pending messages`)
