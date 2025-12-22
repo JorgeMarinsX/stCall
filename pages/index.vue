@@ -18,7 +18,15 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="flex flex-row">
+    <div v-if="callStore.isLoadingHistory" class="flex flex-row gap-4">
+      <Card v-for="i in 4" :key="i" class="flex-1">
+        <template #content>
+          <Skeleton width="100%" height="6rem" />
+        </template>
+      </Card>
+    </div>
+
+    <div v-else class="flex flex-row">
         <StatCard
           title="Chamadas Hoje"
           :value="callStore.todaysCalls"
@@ -71,7 +79,11 @@
       <template #content>
         <Divider class="mt-0" />
 
-        <div v-if="callStore.recentCalls.length > 0" class="flex flex-column overflow-auto">
+        <div v-if="callStore.isLoadingHistory" class="flex flex-column gap-3">
+          <Skeleton v-for="i in 4" :key="i" width="100%" height="4rem" />
+        </div>
+
+        <div v-else-if="callStore.recentCalls.length > 0" class="flex flex-column overflow-auto">
           <RecentCallItem
             v-for="call in callStore.recentCalls.slice(0, 4)"
             :key="call.id"
@@ -85,11 +97,10 @@
           />
         </div>
 
-        <!-- Empty State -->
         <div v-else class="text-center py-8">
           <i class="pi pi-phone text-6xl text-muted-color mb-3"></i>
           <p class="text-muted-color">
-            Nenhuma chamada registrada ainda
+            Sem registros para exibir
           </p>
         </div>
       </template>
@@ -108,6 +119,10 @@ useHead({
 
 const authStore = useAuthStore()
 const callStore = useCallStore()
+
+onMounted(() => {
+  callStore.initializeHistory()
+})
 
 const formatDuration = (seconds: number): string => {
   if (seconds === 0) return '0:00'

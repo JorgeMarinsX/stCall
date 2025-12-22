@@ -1,70 +1,13 @@
 import { defineStore } from 'pinia'
 import type { CallStatus, CallDirection, Call, CallHistory } from '~/types'
 
-
-// Mock call history data - remove when Asterisk integration is ready
-const generateMockCallHistory = (): CallHistory[] => {
-  const mockHistory: CallHistory[] = []
-  const now = new Date()
-
-  // Mock phone numbers
-  const phoneNumbers = [
-    { number: '+55 11 98765-4321', name: 'João Silva' },
-    { number: '+55 11 97654-3210', name: 'Maria Santos' },
-    { number: '+55 21 96543-2109', name: 'Pedro Costa' },
-    { number: '+55 11 95432-1098', name: 'Ana Oliveira' },
-    { number: '+55 11 94321-0987', name: 'Carlos Souza' },
-    { number: '+55 21 93210-9876', name: 'Fernanda Lima' },
-    { number: '+55 11 92109-8765', name: 'Roberto Alves' },
-    { number: '+55 11 91098-7654', name: undefined }, // Unknown caller
-    { number: '+55 21 90987-6543', name: 'Juliana Rocha' },
-    { number: '+55 11 89876-5432', name: 'Ricardo Mendes' },
-  ]
-
-  // Generate 50 mock calls over the last 30 days
-  for (let i = 0; i < 50; i++) {
-    const daysAgo = Math.floor(Math.random() * 30)
-    const hoursAgo = Math.floor(Math.random() * 24)
-    const minutesAgo = Math.floor(Math.random() * 60)
-
-    const timestamp = new Date(now)
-    timestamp.setDate(timestamp.getDate() - daysAgo)
-    timestamp.setHours(timestamp.getHours() - hoursAgo)
-    timestamp.setMinutes(timestamp.getMinutes() - minutesAgo)
-
-    const contact = phoneNumbers[Math.floor(Math.random() * phoneNumbers.length)]
-    const direction: CallDirection = Math.random() > 0.5 ? 'inbound' : 'outbound'
-    const statusRand = Math.random()
-    const status: 'completed' | 'missed' | 'rejected' =
-      statusRand > 0.8 ? 'missed' : statusRand > 0.7 ? 'rejected' : 'completed'
-
-    // Duration in seconds (0 for missed/rejected calls)
-    const duration = status === 'completed' ? Math.floor(Math.random() * 600) + 30 : 0
-
-    mockHistory.push({
-      id: `call-${i}-${timestamp.getTime()}`,
-      number: contact.number,
-      callerName: contact.name,
-      direction,
-      duration,
-      timestamp,
-      status,
-      recordingUrl: status === 'completed' && Math.random() > 0.3
-        ? `/recordings/call-${i}.mp3`
-        : undefined,
-    })
-  }
-
-  // Sort by timestamp descending (most recent first)
-  return mockHistory.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-}
-
 export const useCallStore = defineStore('call', {
   state: () => ({
     activeCall: null as Call | null,
-    callHistory: generateMockCallHistory(),
+    callHistory: [] as CallHistory[],
     isDialing: false,
     incomingCall: null as Call | null,
+    isLoadingHistory: false,
   }),
 
   getters: {
@@ -117,7 +60,48 @@ export const useCallStore = defineStore('call', {
   },
 
   actions: {
-    // State setters - simple mutations without business logic
+    async initializeHistory() {
+      this.isLoadingHistory = true
+
+      const { executeAsteriskCommand } = useCommandExecutor()
+      const { loadHistory, saveHistory } = useCallHistoryPersistence()
+
+      const result = await executeAsteriskCommand<any[]>(
+        'fetchCallHistory',
+        { limit: 100 },
+        {
+          showErrorToast: false,
+          rethrow: false,
+        }
+      )
+
+      if (result && Array.isArray(result)) {
+        this.callHistory = result.map((call: any) => ({
+          id: call.id,
+          number: call.direction === 'inbound' ? call.callerNumber : call.calledNumber,
+          callerName: call.callerName,
+          direction: call.direction,
+          duration: call.talkDuration || 0,
+          timestamp: new Date(call.startedAt),
+          status: call.status === 'completed' ? 'completed' :
+                  call.status === 'abandoned' ? 'missed' :
+                  call.status === 'rejected' ? 'rejected' : 'completed',
+          recordingUrl: call.recordingFilename ? `/recordings/${call.recordingFilename}` : undefined,
+        }))
+
+        saveHistory(this.callHistory)
+      } else {
+        this.callHistory = loadHistory()
+      }
+
+      this.isLoadingHistory = false
+    },
+
+    saveHistoryToStorage() {
+      const { saveHistory } = useCallHistoryPersistence()
+      saveHistory(this.callHistory)
+    },
+
     setIsDialing(value: boolean) {
       this.isDialing = value
     },
@@ -180,10 +164,14 @@ export const useCallStore = defineStore('call', {
       if (this.callHistory.length > 1000) {
         this.callHistory = this.callHistory.slice(0, 1000)
       }
+
+      this.saveHistoryToStorage()
     },
 
     clearHistory() {
       this.callHistory = []
+      const { clearHistory } = useCallHistoryPersistence()
+      clearHistory()
     },
 
     updateCallStatus(callId: string, newState: string) {
