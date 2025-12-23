@@ -34,9 +34,21 @@ export const useCallLifecycle = () => {
     await execute({
       action: () => webrtcPhone.answer(),
       showSuccessToast: false,
-      showErrorToast: false,
+      showErrorToast: true,
+      errorMessage: {
+        title: 'Erro ao atender',
+        detail: 'Não foi possível atender a chamada',
+      },
       onSuccess: () => {
         onCallStarted(incomingCall.id, incomingCall.number)
+
+        callStore.setActiveCall({
+          ...incomingCall,
+          status: 'active',
+        })
+        callStore.clearIncomingCall()
+
+        navigateTo('/call')
       },
       logPrefix: `WebRTC:Answer:${incomingCall.id}`,
       rethrow: true,
@@ -50,7 +62,14 @@ export const useCallLifecycle = () => {
     await execute({
       action: () => webrtcPhone.reject(),
       showSuccessToast: false,
-      showErrorToast: false,
+      showErrorToast: true,
+      errorMessage: {
+        title: 'Erro ao recusar',
+        detail: 'Não foi possível recusar a chamada',
+      },
+      onSuccess: () => {
+        callStore.clearIncomingCall()
+      },
       logPrefix: `WebRTC:Reject:${incomingCall.id}`,
       rethrow: true,
     })

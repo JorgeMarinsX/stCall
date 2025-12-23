@@ -133,6 +133,8 @@
             outlined
             size="large"
             class="flex-1"
+            :disabled="isAnswering || isRejecting"
+            :loading="isRejecting"
             @click="rejectCall"
           />
 
@@ -142,6 +144,8 @@
             severity="success"
             size="large"
             class="flex-1"
+            :disabled="isAnswering || isRejecting"
+            :loading="isAnswering"
             @click="answerCall"
           />
         </div>
@@ -210,8 +214,8 @@ const webrtcPhone = webrtcIntegration.phone
 
 const {
   startOutboundCall,
-  answerCall,
-  rejectCall,
+  answerCall: baseAnswerCall,
+  rejectCall: baseRejectCall,
   hangup,
   toggleMute,
   toggleHold,
@@ -222,17 +226,41 @@ const phoneNumber = ref('')
 const transferNumber = ref('')
 const transferDialogVisible = ref(false)
 const lastCallError = ref<string | null>(null)
+const isAnswering = ref(false)
+const isRejecting = ref(false)
 
 const activeCall = computed(() => callStore.activeCall)
 const incomingCall = computed(() => callStore.incomingCall)
 const recentCalls = computed(() => callStore.recentCalls)
 const showIncomingCall = computed({
   get: () => callStore.hasIncomingCall,
-  set: () => {}
+  set: () => callStore.clearIncomingCall()
 })
 
 const { callDuration } = useCallDuration(() => activeCall.value)
 const { startMonitoring, stopMonitoring } = useAudioLevel()
+
+const answerCall = async () => {
+  if (isAnswering.value) return
+
+  isAnswering.value = true
+  try {
+    await baseAnswerCall()
+  } finally {
+    isAnswering.value = false
+  }
+}
+
+const rejectCall = async () => {
+  if (isRejecting.value) return
+
+  isRejecting.value = true
+  try {
+    await baseRejectCall()
+  } finally {
+    isRejecting.value = false
+  }
+}
 
 onMounted(() => {
   audioStore.loadAudioSettings()
