@@ -22,8 +22,10 @@ export interface CallHistory {
   duration: number
   timestamp: Date
   recordingUrl?: string
-  status: 'completed' | 'missed' | 'rejected'
+  status: 'completed' | 'missed' | 'rejected' | 'abandoned' | 'queued'
   agentId?: string
   agentName?: string
   agentExtension?: string
+  queueName?: string
+  waitDuration?: number
 }

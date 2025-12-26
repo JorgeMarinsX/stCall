@@ -51,7 +51,7 @@ const props = defineProps<{
   direction: CallDirection
   callerName?: string
   number: string
-  status: 'completed' | 'missed' | 'rejected'
+  status: 'completed' | 'missed' | 'rejected' | 'abandoned' | 'queued'
   duration: number
   timestamp: Date
 }>()
@@ -62,6 +62,8 @@ const statusLabel = computed(() => {
     case 'completed': return 'Completada'
     case 'missed': return 'Perdida'
     case 'rejected': return 'Rejeitada'
+    case 'abandoned': return 'Abandonada'
+    case 'queued': return 'Na fila'
     default: return props.status
   }
 })
@@ -71,6 +73,8 @@ const statusSeverity = computed(() => {
     case 'completed': return 'success'
     case 'missed': return 'danger'
     case 'rejected': return 'secondary'
+    case 'abandoned': return 'warn'
+    case 'queued': return 'secondary'
     default: return 'info'
   }
 })

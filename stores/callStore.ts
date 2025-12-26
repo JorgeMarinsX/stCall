@@ -65,9 +65,13 @@ export const useCallStore = defineStore('call', {
 
       const { executeAsteriskCommand } = useCommandExecutor()
       const { loadHistory, saveHistory } = useCallHistoryPersistence()
+      const authStore = useAuthStore()
+
+      // Admins fetch all calls, regular users fetch only their own
+      const command = authStore.isAdmin ? 'fetchAllCallHistory' : 'fetchCallHistory'
 
       const result = await executeAsteriskCommand<any[]>(
-        'fetchCallHistory',
+        command,
         { limit: 100 },
         {
           showErrorToast: false,
@@ -87,6 +91,11 @@ export const useCallStore = defineStore('call', {
                   call.status === 'abandoned' ? 'missed' :
                   call.status === 'rejected' ? 'rejected' : 'completed',
           recordingUrl: call.recordingFilename ? `/recordings/${call.recordingFilename}` : undefined,
+          agentId: call.agentId,
+          agentName: call.agentName,
+          agentExtension: call.agentExtension,
+          queueName: call.queueName,
+          waitDuration: call.waitDuration,
         }))
 
         saveHistory(this.callHistory)

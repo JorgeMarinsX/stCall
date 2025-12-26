@@ -74,6 +74,21 @@
             />
           </div>
 
+          <div class="col-12 md:col-3">
+            <label for="queue" class="block text-sm font-medium mb-2">
+              Fila
+            </label>
+            <Select
+              id="queue"
+              v-model="filters.queueName"
+              :options="queueOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="Todas as filas"
+              class="w-full"
+            />
+          </div>
+
           <div :class="authStore.isAdmin ? 'col-12 md:col-3' : 'col-12 md:col-2'">
             <label for="search" class="block text-sm font-medium mb-2">
               Buscar
@@ -154,6 +169,13 @@
             </template>
           </Column>
 
+          <Column field="queueName" header="Fila" sortable :style="{ width: '120px' }">
+            <template #body="{ data }">
+              <Tag v-if="data.queueName" :value="data.queueName" severity="secondary" />
+              <span v-else class="text-muted-color text-sm">-</span>
+            </template>
+          </Column>
+
           <Column field="status" header="Status" sortable :style="{ width: '140px' }">
             <template #body="{ data }">
               <Tag
@@ -166,6 +188,12 @@
           <Column field="duration" header="Duração" sortable :style="{ width: '100px' }">
             <template #body="{ data }">
               {{ data.duration > 0 ? formatDuration(data.duration) : '-' }}
+            </template>
+          </Column>
+
+          <Column v-if="hasQueueCalls" field="waitDuration" header="Espera" sortable :style="{ width: '100px' }">
+            <template #body="{ data }">
+              {{ data.waitDuration ? formatDuration(data.waitDuration) : '-' }}
             </template>
           </Column>
 
@@ -235,6 +263,7 @@ const filters = ref({
   direction: null as string | null,
   status: null as string | null,
   agentId: null as string | null,
+  queueName: null as string | null,
   search: '',
 })
 
@@ -249,7 +278,24 @@ const statusOptions = [
   { label: 'Completadas', value: 'completed' },
   { label: 'Perdidas', value: 'missed' },
   { label: 'Rejeitadas', value: 'rejected' },
+  { label: 'Abandonadas', value: 'abandoned' },
 ]
+
+const queueOptions = computed(() => {
+  const allOption = { label: 'Todas as filas', value: null }
+  const uniqueQueues = [...new Set(callStore.callHistory
+    .filter(call => call.queueName)
+    .map(call => call.queueName))]
+  const queues = uniqueQueues.map(queue => ({
+    label: queue,
+    value: queue
+  }))
+  return [allOption, ...queues]
+})
+
+const hasQueueCalls = computed(() => {
+  return filteredCalls.value.some(call => call.queueName)
+})
 
 const showPlayer = ref(false)
 const selectedCall = ref<CallHistory | null>(null)
@@ -296,6 +342,10 @@ const filteredCalls = computed(() => {
     calls = calls.filter(call => call.status === filters.value.status)
   }
 
+  if (filters.value.queueName) {
+    calls = calls.filter(call => call.queueName === filters.value.queueName)
+  }
+
   if (filters.value.search) {
     const searchLower = filters.value.search.toLowerCase()
     calls = calls.filter(call =>
@@ -336,15 +386,19 @@ const getStatusLabel = (status: string): string => {
     case 'completed': return 'Completada'
     case 'missed': return 'Perdida'
     case 'rejected': return 'Rejeitada'
+    case 'abandoned': return 'Abandonada'
+    case 'queued': return 'Na fila'
     default: return status
   }
 }
 
-const getStatusSeverity = (status: string): 'success' | 'danger' | 'secondary' => {
+const getStatusSeverity = (status: string): 'success' | 'danger' | 'secondary' | 'warn' => {
   switch (status) {
     case 'completed': return 'success'
     case 'missed': return 'danger'
     case 'rejected': return 'secondary'
+    case 'abandoned': return 'warn'
+    case 'queued': return 'secondary'
     default: return 'secondary'
   }
 }
@@ -355,6 +409,7 @@ const clearFilters = () => {
     direction: null,
     status: null,
     agentId: null,
+    queueName: null,
     search: '',
   }
 }
