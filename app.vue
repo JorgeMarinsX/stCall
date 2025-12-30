@@ -3,6 +3,7 @@
     <NuxtPage />
   </NuxtLayout>
   <Toast position="bottom-right"/>
+  <IncomingCallDialog />
 </template>
 
 <script setup>
@@ -13,6 +14,9 @@ const toast = useToast()
 if (toast) {
   globalToast.register(toast)
 }
+
+// Initialize WebRTC integration globally to handle incoming calls on any page
+useWebRTCIntegration()
 
 // Cleanup on unmount
 onUnmounted(() => {

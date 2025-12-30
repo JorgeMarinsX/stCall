@@ -94,65 +94,6 @@
     </Card>
 
     <Dialog
-      v-model:visible="showIncomingCall"
-      header="Chamada recebida"
-      modal
-      :closable="false"
-      :style="{ width: '450px' }"
-    >
-      <div class="flex flex-col items-center text-center py-4">
-        <div class="relative mb-6">
-          <Avatar
-            v-if="incomingCall?.callerName"
-            :label="incomingCall.callerName.charAt(0).toUpperCase()"
-            size="xlarge"
-            shape="circle"
-            class="w-32 h-32 bg-orange-500 text-white text-5xl animate-pulse"
-          />
-          <Avatar
-            v-else
-            icon="pi pi-phone"
-            size="xlarge"
-            shape="circle"
-            class="w-32 h-32 bg-gray-500 text-white text-5xl animate-pulse"
-          />
-        </div>
-
-        <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-          {{ incomingCall?.callerName || 'Desconhecido' }}
-        </h3>
-        <p class="text-lg text-gray-600 dark:text-gray-400 mb-6">
-          {{ incomingCall?.number }}
-        </p>
-
-        <div class="flex gap-4">
-          <Button
-            label="Recusar"
-            icon="pi pi-times"
-            severity="danger"
-            outlined
-            size="large"
-            class="flex-1"
-            :disabled="isAnswering || isRejecting"
-            :loading="isRejecting"
-            @click="rejectCall"
-          />
-
-          <Button
-            label="Atender"
-            icon="pi pi-phone"
-            severity="success"
-            size="large"
-            class="flex-1"
-            :disabled="isAnswering || isRejecting"
-            :loading="isAnswering"
-            @click="answerCall"
-          />
-        </div>
-      </div>
-    </Dialog>
-
-    <Dialog
       v-model:visible="transferDialogVisible"
       header="Transferir chamada"
       modal
@@ -214,8 +155,6 @@ const webrtcPhone = webrtcIntegration.phone
 
 const {
   startOutboundCall,
-  answerCall: baseAnswerCall,
-  rejectCall: baseRejectCall,
   hangup,
   toggleMute,
   toggleHold,
@@ -226,41 +165,12 @@ const phoneNumber = ref('')
 const transferNumber = ref('')
 const transferDialogVisible = ref(false)
 const lastCallError = ref<string | null>(null)
-const isAnswering = ref(false)
-const isRejecting = ref(false)
 
 const activeCall = computed(() => callStore.activeCall)
-const incomingCall = computed(() => callStore.incomingCall)
 const recentCalls = computed(() => callStore.recentCalls)
-const showIncomingCall = computed({
-  get: () => callStore.hasIncomingCall,
-  set: () => callStore.clearIncomingCall()
-})
 
 const { callDuration } = useCallDuration(() => activeCall.value)
 const { startMonitoring, stopMonitoring } = useAudioLevel()
-
-const answerCall = async () => {
-  if (isAnswering.value) return
-
-  isAnswering.value = true
-  try {
-    await baseAnswerCall()
-  } finally {
-    isAnswering.value = false
-  }
-}
-
-const rejectCall = async () => {
-  if (isRejecting.value) return
-
-  isRejecting.value = true
-  try {
-    await baseRejectCall()
-  } finally {
-    isRejecting.value = false
-  }
-}
 
 onMounted(() => {
   audioStore.loadAudioSettings()
@@ -276,7 +186,6 @@ watch(() => agentStore.isConnectedToQueue, (isConnected) => {
     stopMonitoring()
   }
 })
-
 
 const startCall = async (number?: string) => {
   const numberToCall = number || phoneNumber.value
