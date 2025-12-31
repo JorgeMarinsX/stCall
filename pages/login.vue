@@ -19,18 +19,20 @@
             />
           </div>
           
-          <div class="flex flex-col gap-2 w-full">
+          <div class="flex flex-col gap-2">
             <label for="password" class="font-medium">Password</label>
-            <Password 
+            <Password
               id="password"
-              v-model="password" 
+              v-model="password"
               :feedback="false"
               toggleMask
               placeholder="Digite sua senha"
-               />
+              class="w-full"
+              inputClass="w-full"
+            />
           </div>
           
-          <div class="flex items-center justify-between mt-4">
+          <div class="flex items-center gap-3 mt-4">
             <Button
               type="submit"
               label="Entrar"
@@ -38,20 +40,19 @@
               :loading="loading"
               :disabled="loading"
             />
-            <NuxtLink to="/" class="text-sm text-primary-600 hover:underline">
-              Voltar
-            </NuxtLink>
+            <Button
+              type="button"
+              label="Esqueci minha senha"
+              severity="secondary"
+              @click="onForgotPassword"
+            />
           </div>
 
-          <!-- Development hint -->
-          <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded text-sm text-blue-800 dark:text-blue-200">
-            <p class="font-medium mb-1">💡 Desenvolvimento:</p>
-            <p class="text-xs"> <b>Atenção</b> <code>No momento, o login está sendo dsenvolvido. É provável que você não consiga acessar enquanto este processo não for concluído</code></p>
-            
-          </div>
         </form>
       </template>
     </Card>
+
+    <PasswordRecoveryDialog v-model:visible="showRecoveryDialog" />
   </div>
 </template>
 
@@ -66,11 +67,15 @@ definePageMeta({
 const authStore = useAuthStore()
 const router = useRouter()
 const toast = useToast()
-const { execute } = useCommandExecutor()
 
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+const showRecoveryDialog = ref(false)
+
+function onForgotPassword() {
+  showRecoveryDialog.value = true
+}
 
 async function onSubmit() {
   // Validate inputs
@@ -86,28 +91,11 @@ async function onSubmit() {
 
   loading.value = true
 
-  const success = await execute({
-    action: () => authStore.login(email.value, password.value),
-    successMessage: {
-      title: 'Login realizado',
-      detail: `Bem-vindo, ${authStore.userName}!`,
-    },
-    errorMessage: 'Falha ao conectar ao servidor',
-    onSuccess: (loginSuccess) => {
-      if (loginSuccess) {
-        router.push('/')
-      } else {
-        toast.add({
-          severity: 'error',
-          summary: 'Erro de autenticação',
-          detail: authStore.lastError || 'Email ou senha inválidos',
-          life: 5000
-        })
-      }
-    },
-    logPrefix: 'Login',
-    rethrow: false,
-  })
+  const loginSuccess = await authStore.login(email.value, password.value)
+
+  if (loginSuccess) {
+    router.push('/')
+  }
 
   loading.value = false
 }
