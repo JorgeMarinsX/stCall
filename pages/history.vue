@@ -245,9 +245,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useCallStore } from '~/stores/callStore'
-import type { CallHistory } from '~/types'
+import { useCallHistoryFilters } from '~/composables/calls/useCallHistoryFilters'
+import { useCallFormatters } from '~/composables/calls/useCallFormatters'
+import { useCallStatus } from '~/composables/calls/useCallStatus'
+import { useRecordingPlayer } from '~/composables/calls/useRecordingPlayer'
 
 useHead({
   title: 'stCall - Histórico de Chamadas',
@@ -258,170 +261,36 @@ const authStore = useAuthStore()
 const agentStore = useAgentStore()
 const { execute } = useCommandExecutor()
 
-const filters = ref({
-  dateRange: null as Date[] | null,
-  direction: null as string | null,
-  status: null as string | null,
-  agentId: null as string | null,
-  queueName: null as string | null,
-  search: '',
-})
+// Filters
+const {
+  filters,
+  directionOptions,
+  statusOptions,
+  queueOptions,
+  agentOptions,
+  filteredCalls,
+  hasQueueCalls,
+  clearFilters,
+} = useCallHistoryFilters()
 
-const directionOptions = [
-  { label: 'Todos', value: null },
-  { label: 'Recebidas', value: 'inbound' },
-  { label: 'Realizadas', value: 'outbound' },
-]
+// Formatters
+const { formatDuration, formatDate, formatTime } = useCallFormatters()
 
-const statusOptions = [
-  { label: 'Todos', value: null },
-  { label: 'Completadas', value: 'completed' },
-  { label: 'Perdidas', value: 'missed' },
-  { label: 'Rejeitadas', value: 'rejected' },
-  { label: 'Abandonadas', value: 'abandoned' },
-]
+// Status helpers
+const { getStatusLabel, getStatusSeverity } = useCallStatus()
 
-const queueOptions = computed(() => {
-  const allOption = { label: 'Todas as filas', value: null }
-  const uniqueQueues = [...new Set(callStore.callHistory
-    .filter(call => call.queueName)
-    .map(call => call.queueName))]
-  const queues = uniqueQueues.map(queue => ({
-    label: queue,
-    value: queue
-  }))
-  return [allOption, ...queues]
-})
+// Recording player
+const { showPlayer, selectedCall, playRecording } = useRecordingPlayer()
 
-const hasQueueCalls = computed(() => {
-  return filteredCalls.value.some(call => call.queueName)
-})
-
-const showPlayer = ref(false)
-const selectedCall = ref<CallHistory | null>(null)
-
-// Agent options for admin filter
-const agentOptions = computed(() => {
-  const allOption = { label: 'Todos os agentes', value: null }
-  const agents = agentStore.agents.map(agent => ({
-    label: `${agent.name} (${agent.extension})`,
-    value: agent.id
-  }))
-  return [allOption, ...agents]
-})
-
-const filteredCalls = computed(() => {
-  let calls = [...callStore.callHistory]
-
-  // If not admin, only show calls for current user
-  if (!authStore.isAdmin && authStore.user) {
-    const userId = authStore.user.id
-    calls = calls.filter(call => call.agentId === userId)
-  }
-
-  // Admin agent filter
-  if (authStore.isAdmin && filters.value.agentId) {
-    calls = calls.filter(call => call.agentId === filters.value.agentId)
-  }
-
-  if (filters.value.dateRange && filters.value.dateRange.length === 2) {
-    const [start, end] = filters.value.dateRange
-    if (start && end) {
-      calls = calls.filter(call => {
-        const callDate = new Date(call.timestamp)
-        return callDate >= start && callDate <= end
-      })
-    }
-  }
-
-  if (filters.value.direction) {
-    calls = calls.filter(call => call.direction === filters.value.direction)
-  }
-
-  if (filters.value.status) {
-    calls = calls.filter(call => call.status === filters.value.status)
-  }
-
-  if (filters.value.queueName) {
-    calls = calls.filter(call => call.queueName === filters.value.queueName)
-  }
-
-  if (filters.value.search) {
-    const searchLower = filters.value.search.toLowerCase()
-    calls = calls.filter(call =>
-      call.number.toLowerCase().includes(searchLower) ||
-      call.callerName?.toLowerCase().includes(searchLower) ||
-      (authStore.isAdmin && call.agentName?.toLowerCase().includes(searchLower))
-    )
-  }
-
-  return calls
-})
-
-const formatDuration = (seconds: number): string => {
-  if (seconds === 0) return '0:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
-}
-
-const formatTime = (date: Date): string => {
-  return date.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
-
-const getStatusLabel = (status: string): string => {
-  switch (status) {
-    case 'completed': return 'Completada'
-    case 'missed': return 'Perdida'
-    case 'rejected': return 'Rejeitada'
-    case 'abandoned': return 'Abandonada'
-    case 'queued': return 'Na fila'
-    default: return status
-  }
-}
-
-const getStatusSeverity = (status: string): 'success' | 'danger' | 'secondary' | 'warn' => {
-  switch (status) {
-    case 'completed': return 'success'
-    case 'missed': return 'danger'
-    case 'rejected': return 'secondary'
-    case 'abandoned': return 'warn'
-    case 'queued': return 'secondary'
-    default: return 'secondary'
-  }
-}
-
-const clearFilters = () => {
-  filters.value = {
-    dateRange: null,
-    direction: null,
-    status: null,
-    agentId: null,
-    queueName: null,
-    search: '',
-  }
-}
-
-const playRecording = (call: CallHistory) => {
-  selectedCall.value = call
-  showPlayer.value = true
-}
-
-// Lifecycle
 onMounted(async () => {
-  // Load agents if admin (for agent filter dropdown)
+  await execute({
+    action: () => callStore.initializeHistory(),
+    errorMessage: 'Falha ao carregar histórico de chamadas',
+    logPrefix: 'History:LoadHistory',
+    showSuccessToast: false,
+    rethrow: false,
+  })
+
   if (authStore.isAdmin) {
     await execute({
       action: () => agentStore.fetchAllAgents(),
