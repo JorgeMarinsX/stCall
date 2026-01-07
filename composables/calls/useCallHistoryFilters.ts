@@ -60,13 +60,11 @@ export function useCallHistoryFilters() {
   })
 
   const filteredCalls = computed(() => {
+    // Backend already filters calls for the current user (including calls where
+    // user is caller or callee), so we don't need to filter by agentId here.
+    // For non-admins, the backend returns only their calls.
+    // For admins, we may apply the agent filter below.
     let calls = [...callStore.callHistory]
-
-    // If not admin, only show calls for current user
-    if (!authStore.isAdmin && authStore.user) {
-      const userId = authStore.user.id
-      calls = calls.filter(call => call.agentId === userId)
-    }
 
     // Admin agent filter
     if (authStore.isAdmin && filters.value.agentId) {
